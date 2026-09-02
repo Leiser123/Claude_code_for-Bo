@@ -1,0 +1,3425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Process Flow 编排界面 - 演示</title>
+<style>
+  :root {
+    /* 对齐项目主题色 (globals.css) */
+    --brand: #8F482F;
+    --brand-hover: #AD5F45;
+    --brand-light: #FFDBD0;
+    --brand-dim: rgba(143, 72, 47, 0.08);
+    --primary: #8F482F;
+    --on-primary: #FFFFFF;
+    --bg: #FAF9F5;
+    --surface: #FFFFFF;
+    --surface-bright: #FAF9F5;
+    --surface-container: #EFEEEA;
+    --surface-container-low: #F4F4F0;
+    --surface-container-high: #E9E8E4;
+    --surface-container-highest: #E3E2DF;
+    --surface-container-lowest: #FFFFFF;
+    --border: #DAC1BA;
+    --border-separator: #DAC1BA;
+    --text-primary: #1B1C1A;
+    --text-secondary: #54433E;
+    --text-tertiary: #87736D;
+    --outline: #87736D;
+    --secondary: #2D628F;
+    --error: #BA1A1A;
+    --success: #087E4F;
+    --warning: #CA8A04;
+    --op-color: #2D628F;       --op-bg: #E4F1FF;
+    --insp-color: #087E4F;     --insp-bg: #E8F5E2;
+    --trans-color: #87736D;    --trans-bg: #F4F4F0;
+    --delay-color: #CA8A04;    --delay-bg: #FEF9C3;
+    --store-color: #7C3AED;    --store-bg: #F3E8FF;
+    --start-color: #54433E;    --start-bg: #EFEEEA;
+    --end-color: #4D3E80;      --end-bg: #E6DFFF;
+    --dec-color: #BA1A1A;      --dec-bg: #FFDAD6;
+    --sc-color: #BA1A1A;
+    --shadow-sm: 0 1px 2px rgba(27,28,26,0.06), 0 1px 3px rgba(27,28,26,0.04);
+    --shadow-md: 0 4px 12px rgba(27,28,26,0.08), 0 2px 4px rgba(27,28,26,0.04);
+    --shadow-lg: 0 8px 24px rgba(27,28,26,0.12), 0 4px 8px rgba(27,28,26,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text-primary); overflow: hidden; height: 100vh; user-select: none; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+  /* Material Symbols 字体兜底：加载失败时自动转为内联 SVG */
+  .ms-icon { display: inline-block; vertical-align: -0.22em; flex-shrink: 0; }
+
+  /* ===== Topbar ===== */
+  .topbar { height: 56px; background: var(--surface); border-bottom: 1px solid var(--border-separator); display: flex; align-items: center; padding: 0 16px; gap: 8px; z-index: 10; box-shadow: var(--shadow-sm); }
+  .topbar-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text-primary); }
+  .topbar-title .material-symbols-outlined { color: var(--brand); font-size: 22px; }
+  .topbar-sep { width: 1px; height: 24px; background: var(--border-separator); margin: 0 4px; }
+  .topbar-btn { padding: 6px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 20px; cursor: pointer; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; transition: all 0.15s; }
+  .topbar-btn:hover { background: var(--surface-container); border-color: var(--brand); color: var(--brand); }
+  .topbar-btn.primary { background: var(--brand); color: var(--on-primary); border-color: var(--brand); }
+  .topbar-btn.primary:hover { background: var(--brand-hover); }
+  .topbar-btn:disabled { opacity: 0.4; cursor: not-allowed; color: var(--text-tertiary); border-color: var(--border-separator); background: var(--surface-container-lowest); }
+  .topbar-btn:disabled:hover { border-color: var(--border-separator); color: var(--text-tertiary); background: var(--surface-container-lowest); box-shadow: none; }
+  .topbar-select { padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; font-size: 13px; background: var(--surface); color: var(--text-primary); cursor: pointer; }
+  .topbar-spacer { flex: 1; }
+
+  /* ===== Layout ===== */
+  .layout { display: flex; height: calc(100vh - 56px - 32px); }
+  .left-panel { width: 280px; background: var(--surface); border-right: 1px solid var(--border-separator); padding: 14px; overflow-y: auto; flex-shrink: 0; }
+  .right-panel { width: 360px; background: var(--surface); border-left: 1px solid var(--border-separator); padding: 16px; overflow-y: auto; flex-shrink: 0; }
+  .resizer { width: 5px; cursor: col-resize; background: transparent; flex-shrink: 0; position: relative; z-index: 5; transition: background 0.15s; }
+  .resizer:hover, .resizer.resizing { background: var(--brand); }
+  .resizer::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 2px; height: 36px; background: var(--border); border-radius: 2px; transition: background 0.15s; }
+  .resizer:hover::after, .resizer.resizing::after { background: var(--brand); }
+  /* 画布视口 - 无限画布 */
+  .canvas-viewport { flex: 1; position: relative; overflow: hidden; background: var(--surface-container-low); cursor: default; }
+  .canvas-viewport.mode-pan { cursor: grab; }
+  .canvas-viewport.mode-pan.panning { cursor: grabbing; }
+  .canvas { position: absolute; top: 0; left: 0; width: 1px; height: 1px; transform-origin: 0 0; background-image: radial-gradient(circle, var(--surface-container-high) 1.5px, transparent 1.5px); background-size: 20px 20px; background-position: 0 0; }
+  /* 画布工具栏 */
+  .canvas-toolbar { position: absolute; top: 12px; right: 12px; z-index: 50; display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: var(--shadow-md); }
+  .tb-btn { width: 36px; height: 36px; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .tb-btn:hover { background: var(--surface-container); color: var(--brand); }
+  .tb-btn.active { background: var(--brand-dim); color: var(--brand); }
+  .tb-sep { height: 1px; background: var(--border-separator); margin: 2px 4px; }
+  .tb-zoom-info { font-size: 11px; color: var(--text-tertiary); text-align: center; padding: 2px 0; user-select: none; }
+
+  /* ===== Left Panel ===== */
+  .panel-title { font-size: 12px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .node-palette { display: flex; flex-direction: column; gap: 8px; }
+  .palette-item { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; cursor: grab; background: var(--surface); transition: all 0.15s; }
+  .palette-item:hover { border-color: var(--brand); box-shadow: var(--shadow-sm); transform: translateY(-1px); background: var(--surface-container-low); }
+  .palette-item:active { cursor: grabbing; }
+  .palette-symbol { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* Symbol shapes */
+  .sym { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .sym-op { border-radius: 50%; background: var(--op-bg); border: 2px solid var(--op-color); color: var(--op-color); }
+  .sym-insp { border-radius: 3px; background: var(--insp-bg); border: 2px solid var(--insp-color); color: var(--insp-color); }
+  .sym-trans { background: var(--trans-bg); border: 2px solid var(--trans-color); color: var(--trans-color); clip-path: polygon(0 20%, 70% 20%, 70% 0, 100% 50%, 70% 100%, 70% 80%, 0 80%); width: 32px; height: 24px; }
+  .sym-delay { background: var(--delay-bg); border: 2px solid var(--delay-color); color: var(--delay-color); border-radius: 4px; font-size: 16px; }
+  .sym-store { width: 0; height: 0; border-left: 16px solid transparent; border-right: 16px solid transparent; border-top: 26px solid var(--store-color); background: transparent; }
+  .sym-start { border-radius: 50%; background: var(--start-bg); border: 2px solid var(--start-color); color: var(--start-color); }
+  .sym-end { border-radius: 50%; background: var(--end-bg); border: 2px solid var(--end-color); color: var(--end-color); font-weight: 700; }
+  .sym-dec { width: 28px; height: 28px; background: var(--dec-bg); border: 2px solid var(--dec-color); color: var(--dec-color); transform: rotate(45deg); }
+
+  .palette-label { font-size: 13px; color: var(--text-primary); }
+  .palette-label small { display: block; font-size: 10px; color: var(--text-tertiary); }
+  /* 面板搜索与分类（ComfyUI 风格） */
+  .palette-search { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; background: var(--surface); color: var(--text-primary); margin-bottom: 8px; outline: none; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
+  .palette-search:focus { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  .palette-cat { font-size: 11px; font-weight: 600; color: var(--text-tertiary); letter-spacing: 0.4px; margin: 12px 2px 6px; display: flex; align-items: center; gap: 6px; }
+  .palette-cat::after { content: ''; flex: 1; height: 1px; background: var(--border-separator); }
+  .palette-empty { text-align: center; color: var(--text-tertiary); font-size: 12px; padding: 24px 0; }
+  .palette-item.fm { cursor: pointer; }
+  .palette-item.fm:hover { border-color: var(--brand); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+  .palette-add { margin-left: auto; width: 26px; height: 26px; border-radius: 50%; background: var(--brand-dim); color: var(--brand); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; font-weight: 700; }
+
+  /* ===== Canvas Nodes ===== */
+  .flow-node { position: absolute; background: var(--surface); border: 2px solid var(--border); border-radius: 14px; padding: 10px 14px; min-width: 240px; min-height: 62px; cursor: grab; box-shadow: var(--shadow-sm); transition: transform 0.18s cubic-bezier(0.2,0.8,0.3,1), box-shadow 0.18s, border-color 0.18s; z-index: 2; }
+  .flow-node:hover { box-shadow: var(--shadow-lg); transform: scale(1.045); border-color: var(--brand); }
+  .flow-node.click-pop { animation: nodePop 0.35s ease; }
+  .flow-node.pfmea-active { border-color: var(--brand) !important; box-shadow: 0 0 0 4px var(--brand-light), 0 8px 24px rgba(143,72,47,0.25) !important; transform: scale(1.04); z-index: 6; }
+  @keyframes nodePop { 0% { transform: scale(1); } 40% { transform: scale(1.08); } 100% { transform: scale(1); } }
+  .flow-node.selected { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+  .flow-node.dragging { cursor: grabbing; opacity: 0.85; z-index: 100; transform: scale(1.03); }
+  .flow-node.connecting-from { border-color: var(--brand); border-style: dashed; }
+  .node-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .node-symbol { width: 24px; height: 24px; flex-shrink: 0; }
+  .node-id { font-size: 12px; font-weight: 700; color: #000; background: var(--brand-light); padding: 2px 8px; border-radius: 6px; cursor: text; }
+  .node-id:focus { outline: 2px solid var(--brand); background: #fff; }
+  .node-name { font-size: 13px; color: var(--text-primary); cursor: text; padding: 2px 4px; border-radius: 4px; }
+  .node-name:focus { outline: 2px solid var(--brand); background: #fff; }
+  .node-meta { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 10px; color: var(--text-tertiary); flex-wrap: wrap; }
+  .node-sc { background: var(--sc-color); color: #000; padding: 1px 6px; border-radius: 4px; font-weight: 600; font-size: 9px; }
+  .node-equip { display: flex; align-items: center; gap: 2px; }
+  .node-anchor { position: absolute; width: 12px; height: 12px; background: var(--brand); border: 2px solid #fff; border-radius: 50%; cursor: crosshair; opacity: 0; transition: opacity 0.15s; z-index: 5; }
+  .flow-node:hover .node-anchor { opacity: 1; }
+  .anchor-bottom { bottom: -7px; left: 50%; transform: translateX(-50%); }
+  .anchor-top { top: -7px; left: 50%; transform: translateX(-50%); }
+  .node-anchor:hover { transform: translateX(-50%) scale(1.4); }
+  /* FMEA 模式下卡片右侧的 PFMEA 入口箭头 */
+  .node-pfmea-tag { position: absolute; top: 50%; right: -96px; transform: translateY(-50%); display: none; align-items: center; gap: 4px; padding: 4px 10px 4px 14px; background: var(--brand); color: #000; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-md); white-space: nowrap; z-index: 6; letter-spacing: 0.3px; transition: all 0.15s; }
+  .node-pfmea-tag::before { content: ''; position: absolute; left: -8px; top: 50%; transform: translateY(-50%); border: 5px solid transparent; border-right-color: var(--brand); }
+  .node-pfmea-tag:hover { background: var(--brand-hover); transform: translateY(-50%) scale(1.08); }
+  .node-pfmea-tag:hover::before { border-right-color: var(--brand-hover); }
+  .node-pfmea-tag .ms-icon, .node-pfmea-tag .material-symbols-outlined { font-size: 14px; }
+  body.pfmea-mode .node-pfmea-tag { display: flex; }
+  /* FMEA 模式点击卡片后的提示气泡 */
+  .pfmea-hint { position: fixed; transform: translateX(-50%); background: var(--text-primary); color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 300; pointer-events: none; white-space: nowrap; opacity: 0; transition: opacity 0.2s; }
+  .pfmea-hint::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--text-primary); }
+  .flow-node.overlapping { border-color: var(--error) !important; box-shadow: 0 0 0 3px rgba(186,26,26,0.2) !important; }
+  .flow-node.selected { border-color: var(--brand) !important; box-shadow: 0 0 0 3px var(--brand-light) !important; }
+  .edge-path.selected { stroke: var(--brand) !important; stroke-width: 3; filter: drop-shadow(0 0 3px rgba(143,72,47,0.4)); }
+  /* 锁定状态 */
+  body.locked .palette-item:not(.fm), body.locked .node-anchor,
+  body.locked .edge-path, body.locked .edge-label-group, body.locked .edge-flow { pointer-events: none !important; cursor: default !important; }
+  body.locked .flow-node { cursor: pointer !important; }
+  body.locked .node-id, body.locked .node-name { contenteditable: false; cursor: default !important; user-select: text; }
+  body.locked #canvasViewport { cursor: grab; }
+  body.locked .ctx-trigger { display: none; }
+  /* 框选矩形 */
+  .marquee { position: absolute; background: rgba(143,72,47,0.1); border: 1px dashed var(--brand); border-radius: 3px; pointer-events: none; z-index: 60; }
+  /* 右下角告警徽章 */
+  .alert-badge { position: absolute; right: 14px; bottom: 14px; z-index: 70; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; border-radius: 12px; box-shadow: 0 4px 12px rgba(186,26,26,0.15); font-size: 12px; font-weight: 500; cursor: pointer; user-select: none; max-width: 360px; }
+  .alert-badge.warn { background: #fffbeb; border-color: #fde68a; color: #b45309; box-shadow: 0 4px 12px rgba(180,83,9,0.15); }
+  .alert-badge .ab-icon { font-size: 20px; line-height: 1; }
+  .alert-badge .ab-detail { font-size: 11px; opacity: 0.85; margin-top: 2px; line-height: 1.5; }
+  .alert-badge-hide { position: absolute; top: 2px; right: 4px; background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; font-size: 14px; padding: 2px; }
+  .edge-label { fill: var(--surface); stroke: var(--border); stroke-width: 1; cursor: text; }
+  .edge-label-text { font-size: 11px; fill: var(--text-secondary); text-anchor: middle; dominant-baseline: central; cursor: text; pointer-events: none; }
+  .edge-label-foreign { position: absolute; transform: translate(-50%, -50%); z-index: 3; }
+  .edge-label-input { padding: 2px 6px; border: 1px solid var(--brand); border-radius: 6px; font-size: 11px; background: var(--surface); color: var(--text-secondary); text-align: center; min-width: 40px; outline: none; box-shadow: 0 0 0 2px var(--brand-light); }
+
+  /* ===== SVG Edges ===== */
+  #edges-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
+  .edge-path { fill: none; stroke: var(--outline); stroke-width: 2; pointer-events: stroke; cursor: pointer;
+    transition: stroke-width 0.25s ease, filter 0.25s ease;
+  }
+  .edge-path:hover { stroke: var(--brand); stroke-width: 3; filter: drop-shadow(0 0 4px rgba(143, 72, 47, 0.45)); }
+  .edge-path.dashed { stroke-dasharray: 6 4; }
+  /* 流向流动动画：三层叠加增强动态感 */
+  .edge-group { pointer-events: none; }
+  /* 第一层：底层暖色宽流动带（柔边光晕） */
+  .edge-flow-glow { fill: none; stroke: #D07A5C; stroke-width: 5.5; stroke-linecap: round; opacity: 0.22;
+    stroke-dasharray: 2 48;
+    animation: edgeFlowAnimA 1.4s linear infinite;
+    filter: drop-shadow(0 0 6px rgba(208, 122, 92, 0.55));
+    pointer-events: none;
+  }
+  /* 第二层：主流动段（品牌色实线段 + 尾随淡段） */
+  .edge-flow { fill: none; stroke: var(--brand); stroke-width: 2.8; stroke-linecap: round; opacity: 0.9;
+    stroke-dasharray: 10 22 3 22 3 22;
+    animation: edgeFlowAnimB 1.1s linear infinite;
+    filter: drop-shadow(0 0 2.5px rgba(143, 72, 47, 0.5));
+    pointer-events: none;
+  }
+  /* 第三层：高速高亮细线段（像电子脉冲） */
+  .edge-flow-spark { fill: none; stroke: #FFFFFF; stroke-width: 1.2; stroke-linecap: round; opacity: 0.95;
+    stroke-dasharray: 3 140;
+    animation: edgeFlowAnimC 0.72s linear infinite;
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 1.5px rgba(143, 72, 47, 0.8));
+    pointer-events: none;
+  }
+  @keyframes edgeFlowAnimA {
+    0%   { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -50; }
+  }
+  @keyframes edgeFlowAnimB {
+    0%   { stroke-dashoffset: 0; opacity: 0.78; }
+    50%  { opacity: 1; }
+    100% { stroke-dashoffset: -85; opacity: 0.78; }
+  }
+  @keyframes edgeFlowAnimC {
+    0%   { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -143; }
+  }
+  /* 箭头脉动：周期性缩放 + 颜色呼吸 */
+  .edge-arrow { fill: var(--outline); transition: fill 0.3s; transform-origin: 9px 3.5px;
+    animation: arrowPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes arrowPulse {
+    0%, 100% { transform: scale(1); fill: var(--outline); }
+    50%      { transform: scale(1.18); fill: var(--brand); }
+  }
+  .edge-group:hover .edge-arrow,
+  .edge-path:hover + svg .edge-arrow,
+  .edge-path:hover ~ defs + * .edge-arrow { fill: var(--brand); }
+  .edge-temp { fill: none; stroke: var(--brand); stroke-width: 2; stroke-dasharray: 5 3; pointer-events: none; }
+
+  /* ===== Right Panel ===== */
+  .prop-group { margin-bottom: 18px; }
+  .prop-group-title { font-size: 12px; font-weight: 600; color: var(--brand); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border-separator); }
+  .prop-field { margin-bottom: 10px; }
+  .prop-field > label { display: block; font-size: 11px; color: var(--text-tertiary); margin-bottom: 3px; font-weight: 500; }
+  .prop-field input, .prop-field select, .prop-field textarea { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface); color: var(--text-primary); }
+  .prop-field input:focus, .prop-field select:focus, .prop-field textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  .prop-empty { text-align: center; color: var(--text-tertiary); padding: 40px 0; font-size: 13px; }
+  .prop-empty .material-symbols-outlined { font-size: 48px; opacity: 0.25; margin-bottom: 8px; }
+  .badge-sc { background: var(--sc-color); color: #000; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; }
+  .badge-nosc { background: var(--surface-container); color: var(--text-tertiary); padding: 2px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; border: none; }
+  .link-status { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+  .link-status.ok { color: var(--success); }
+  .link-status.no { color: var(--warning); }
+
+  /* 多值列表字段（产品特性/过程参数） */
+  .multi-field { display: flex; flex-direction: column; gap: 6px; }
+  .multi-row { display: flex; align-items: center; gap: 6px; }
+  .multi-row input { flex: 1; padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-family: inherit; background: var(--surface); color: var(--text-primary); }
+  .multi-row input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  .multi-del { width: 26px; height: 26px; flex-shrink: 0; border: none; background: transparent; color: var(--text-tertiary); cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .multi-del:hover { background: var(--dec-bg); color: var(--error); }
+  .multi-add { display: flex; align-items: center; gap: 4px; padding: 5px 10px; border: 1px dashed var(--border); border-radius: 8px; background: transparent; color: var(--brand); cursor: pointer; font-size: 12px; font-family: inherit; width: 100%; justify-content: center; transition: all 0.15s; }
+  .multi-add:hover { background: var(--brand-dim); border-color: var(--brand); }
+
+  /* ===== Status Bar ===== */
+  .statusbar { height: 32px; background: var(--surface); border-top: 1px solid var(--border-separator); display: flex; align-items: center; padding: 0 16px; gap: 16px; font-size: 11px; color: var(--text-tertiary); }
+  .status-item { display: flex; align-items: center; gap: 4px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-green { background: var(--success); }
+  .dot-orange { background: var(--warning); }
+
+  /* ===== Context Menu ===== */
+  .ctx-menu { position: fixed; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 6px; z-index: 1000; display: none; min-width: 160px; }
+  .ctx-item { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+  .ctx-item:hover { background: var(--surface-container); color: var(--brand); }
+  .ctx-item.danger:hover { background: var(--dec-bg); color: var(--error); }
+  .ctx-sep { height: 1px; background: var(--border-separator); margin: 4px 0; }
+
+  /* ===== Hint ===== */
+  .canvas-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--text-tertiary); pointer-events: none; z-index: 0; }
+  .canvas-hint .material-symbols-outlined { font-size: 64px; opacity: 0.12; }
+  .canvas-hint p { font-size: 14px; margin-top: 8px; }
+
+  /* ===== 工作流悬浮窗 (Process flow → PFMEA → CP → WI) ===== */
+  .workflow-float { position: absolute; top: 12px; left: 12px; z-index: 40; display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-md); }
+  .wf-step { position: relative; display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; background: var(--surface-container-low); color: var(--text-secondary); border: 1px solid var(--border-separator); transition: all 0.2s; white-space: nowrap; cursor: pointer; }
+  .wf-step:hover { border-color: var(--brand); color: var(--brand); }
+  .wf-step .material-symbols-outlined { font-size: 14px; }
+  .wf-step.active { background: var(--brand-dim); color: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  /* 锁定状态：视觉区分 + 透明锁图标覆盖 */
+  .wf-step.locked { background: linear-gradient(135deg, var(--surface-container) 0%, var(--surface-container-high) 100%); color: var(--text-tertiary); border-color: var(--border); }
+  .wf-step.locked.active { background: linear-gradient(135deg, var(--brand-dim) 0%, rgba(143,72,47,0.18) 100%); color: var(--brand); border-color: var(--brand); }
+  .wf-step.locked::before { content: '🔒'; font-size: 11px; position: absolute; top: -7px; right: -5px; width: 18px; height: 18px; line-height: 18px; text-align: center; background: var(--brand); color: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); opacity: 0.85; pointer-events: none; z-index: 2; }
+  .wf-step.locked.active::before { background: var(--brand); opacity: 1; animation: lockPulse 2s ease-in-out infinite; }
+  @keyframes lockPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); box-shadow: 0 0 6px rgba(143,72,47,0.6); } }
+  /* 未解锁（前置流程未完成）的禁用态 */
+  .wf-step.disabled { opacity: 0.45; cursor: not-allowed; }
+  .wf-step.disabled:hover { border-color: var(--border-separator); color: var(--text-tertiary); background: var(--surface-container-low); }
+  .wf-step.disabled::after { content: '🔒'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; opacity: 0.4; pointer-events: none; }
+  .wf-arrow { color: var(--text-tertiary); font-size: 16px; display: flex; align-items: center; }
+  .wf-arrow .material-symbols-outlined { font-size: 16px; }
+
+  /* ===== PFMEA 设定表单 (右侧面板锁定模式) ===== */
+  .pfmea-section { margin-bottom: 16px; }
+  .pfmea-section-title { font-size: 13px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border-separator); }
+  .pfmea-node-info { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--brand-dim); border: 1px solid var(--brand); border-radius: 10px; margin-bottom: 14px; }
+  .pfmea-node-info .sym { width: 28px; height: 28px; flex-shrink: 0; }
+  .pfmea-node-info .pn-id { font-size: 12px; font-weight: 700; color: var(--brand); background: var(--brand-light); padding: 2px 8px; border-radius: 6px; }
+  .pfmea-node-info .pn-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .pfmea-node-info .pn-type { font-size: 11px; color: var(--text-tertiary); margin-left: auto; }
+
+  .fm-list { display: flex; flex-direction: column; gap: 10px; }
+  .fm-card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-sm); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+  .fm-card:hover { border-color: var(--brand); box-shadow: var(--shadow-md); }
+  .fm-card.selected { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+  .fm-card.rpn-high { border-left: 4px solid var(--error); }
+  .fm-card.rpn-mid { border-left: 4px solid var(--warning); }
+  .fm-card.rpn-low { border-left: 4px solid var(--success); }
+  .fm-card-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
+  .fm-card-head:hover { background: var(--surface-container-low); }
+  .fm-card-toggle { color: var(--text-tertiary); transition: transform 0.2s; display: flex; }
+  .fm-card-toggle .material-symbols-outlined { font-size: 18px; }
+  .fm-card.collapsed .fm-card-toggle { transform: rotate(-90deg); }
+  .fm-card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fm-card-title.empty { color: var(--text-tertiary); font-style: italic; }
+  .fm-rpn-badge { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 12px; white-space: nowrap; }
+  .fm-rpn-badge.high { background: var(--dec-bg); color: var(--error); }
+  .fm-rpn-badge.mid { background: var(--delay-bg); color: var(--warning); }
+  .fm-rpn-badge.low { background: var(--insp-bg); color: var(--success); }
+  .fm-rpn-badge.zero { background: var(--surface-container); color: var(--text-tertiary); }
+  .fm-card-body { padding: 12px; border-top: 1px solid var(--border-separator); display: flex; flex-direction: column; gap: 10px; }
+  .fm-card.collapsed .fm-card-body { display: none; }
+  .fm-row { display: flex; gap: 10px; align-items: flex-start; }
+  .fm-row .fm-label { font-size: 11px; font-weight: 600; color: var(--text-tertiary); width: 90px; flex-shrink: 0; padding-top: 6px; }
+  .fm-row .fm-input { flex: 1; }
+  .fm-row .fm-score { width: 70px; flex-shrink: 0; }
+  .fm-input input, .fm-input textarea { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: inherit; background: var(--surface); color: var(--text-primary); }
+  .fm-input input:focus, .fm-input textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  .fm-input textarea { resize: vertical; min-height: 32px; }
+  .fm-score input { width: 100%; padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; text-align: center; background: var(--surface); color: var(--text-primary); }
+  .fm-score input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  .fm-score-bar { height: 4px; background: var(--surface-container); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+  .fm-score-fill { height: 100%; border-radius: 2px; transition: width 0.2s; }
+  .fm-score-fill.s-fill { background: var(--error); }
+  .fm-score-fill.o-fill { background: var(--warning); }
+  .fm-score-fill.d-fill { background: var(--secondary); }
+  .fm-card-foot { padding: 8px 12px; border-top: 1px solid var(--border-separator); display: flex; justify-content: space-between; align-items: center; }
+  .fm-del-btn { padding: 4px 10px; font-size: 11px; color: var(--error); background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .fm-del-btn:hover { background: var(--dec-bg); border-color: var(--error); }
+  .fm-del-btn .material-symbols-outlined { font-size: 14px; }
+  .fm-add-btn { width: 100%; padding: 10px; border: 1px dashed var(--brand); border-radius: 10px; background: var(--brand-dim); color: var(--brand); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
+  .fm-add-btn:hover { background: var(--brand-light); }
+  .fm-add-btn .material-symbols-outlined { font-size: 18px; }
+  .pfmea-save-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-separator); }
+
+  /* ===== FMEA 思维导图设计弹窗（无限画布） ===== */
+  .modal-mask { position: fixed; inset: 0; background: rgba(27,28,26,0.5); backdrop-filter: blur(3px); z-index: 900; }
+  .mm-toolbar { position: absolute; top: 0; left: 0; right: 0; height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; padding: 0 14px; z-index: 5; }
+  .mm-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--text-primary); }
+  .mm-title .ms-icon, .mm-title .material-symbols-outlined { color: var(--brand); font-size: 20px; }
+  .mm-badge { background: var(--brand); color: #000; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px; }
+  .mm-sep { width: 1px; height: 24px; background: var(--border-separator); }
+  .mm-spacer { flex: 1; }
+  .mm-canvas { position: absolute; top: 56px; left: 0; right: 0; bottom: 0; overflow: hidden; background: var(--surface-container-low); cursor: grab; }
+  .mm-canvas.mm-panning { cursor: grabbing; }
+  .mm-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, var(--surface-container-highest) 1.5px, transparent 1.5px); background-size: 24px 24px; }
+  .mm-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  .mm-line { fill: none; stroke: var(--outline); stroke-width: 2.2; opacity: 0.75; }
+  .mm-line-sub { fill: none; stroke: var(--brand); stroke-width: 1.8; stroke-dasharray: 6 4; opacity: 0.65; }
+  .mm-center { position: absolute; width: 330px; min-height: 210px; background: linear-gradient(160deg, var(--brand) 0%, var(--brand-hover) 100%); color: #fff; border-radius: 16px; padding: 16px; box-shadow: var(--shadow-lg); z-index: 3; }
+  .mm-center-tag { font-size: 10px; letter-spacing: 1px; color: #000; opacity: 0.9; text-transform: uppercase; margin-bottom: 8px; }
+  .mm-center-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .mm-center-head .sym { width: 28px; height: 28px; background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.85); color: #fff; }
+  .mm-center-id { font-size: 16px; font-weight: 700; }
+  .mm-center-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .mm-center-meta { font-size: 11px; opacity: 0.85; margin-bottom: 8px; }
+  .mm-center-line { font-size: 11px; opacity: 0.92; line-height: 1.5; }
+  .mm-center-line b { background: rgba(255,255,255,0.2); padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-right: 4px; }
+  .mm-center-note { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.25); font-size: 10px; opacity: 0.75; line-height: 1.5; }
+  .mm-branch { position: absolute; width: 270px; min-height: 160px; background: var(--surface); border: 2px solid var(--border); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow-md); z-index: 3; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+  .mm-branch:hover { border-color: var(--brand); }
+  .mm-branch.selected { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-light); }
+  .mm-branch-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .mm-branch-tag { font-size: 9px; font-weight: 700; color: var(--brand); background: var(--brand-light); padding: 2px 6px; border-radius: 8px; flex-shrink: 0; letter-spacing: 0.3px; }
+  .mm-branch-title { flex: 1; }
+  .mm-branch-title input { width: 100%; border: none; outline: none; font-size: 13px; font-weight: 600; background: transparent; color: var(--text-primary); padding: 2px 4px; border-radius: 4px; font-family: inherit; }
+  .mm-branch-title input:focus { background: var(--surface-container-low); }
+  .mm-branch-del { border: none; background: transparent; color: var(--text-tertiary); cursor: pointer; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mm-branch-del:hover { background: var(--dec-bg); color: var(--error); }
+  .mm-branch-del .ms-icon, .mm-branch-del .material-symbols-outlined { font-size: 16px; }
+  .mm-scores { display: flex; gap: 6px; }
+  .mm-score { flex: 1; text-align: center; }
+  .mm-score label { display: block; font-size: 10px; color: var(--text-tertiary); font-weight: 700; margin-bottom: 2px; letter-spacing: 0.3px; }
+  .mm-score input { width: 100%; text-align: center; border: 1px solid var(--border); border-radius: 6px; padding: 3px 0; font-size: 12px; outline: none; font-family: inherit; background: var(--surface); color: var(--text-primary); }
+  .mm-score input:focus { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  /* S/O/D 打分标准问号按钮 */
+  .mm-q { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 9px; font-weight: 700; cursor: pointer; vertical-align: 1px; font-style: normal; }
+  .mm-q:hover { background: var(--brand-hover); transform: scale(1.15); }
+  .mm-rpn-row { margin: 6px 0; }
+  .mm-rpn { text-align: center; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 12px; }
+  .mm-rpn.high { background: var(--dec-bg); color: var(--error); }
+  .mm-rpn.mid { background: var(--delay-bg); color: var(--warning); }
+  .mm-rpn.low { background: var(--insp-bg); color: var(--success); }
+  .mm-rpn.zero { background: var(--surface-container); color: var(--text-tertiary); }
+  /* 分支/卡片可拖拽 */
+  .mm-branch, .mm-sub, .mm-center { cursor: grab; }
+  .mm-dragging { cursor: grabbing !important; opacity: 0.92; z-index: 60; box-shadow: var(--shadow-lg); }
+  /* 卡片右侧中间的"＋"按钮（添加节点入口） */
+  .mm-ghost { position: absolute; width: 30px; height: 30px; border: 2px solid var(--brand); background: var(--brand); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; line-height: 1; cursor: pointer; z-index: 6; box-shadow: var(--shadow-md); transition: all 0.15s; box-sizing: border-box; }
+  .mm-ghost:hover { background: var(--brand-hover); border-color: var(--brand-hover); transform: scale(1.15); }
+  /* 子节点类型选择小菜单 */
+  .mm-child-menu { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 4px; z-index: 80; display: flex; flex-direction: column; gap: 2px; min-width: 126px; }
+  .mm-child-menu-btn { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border: none; background: transparent; font-size: 12px; font-family: inherit; cursor: pointer; border-radius: 6px; color: var(--text-primary); text-align: left; white-space: nowrap; }
+  .mm-child-menu-btn:hover { background: var(--surface-container); }
+  .mm-child-menu-btn.c-effect { color: var(--error); }
+  .mm-child-menu-btn.c-cause { color: var(--warning); }
+  .mm-child-menu-btn.c-control { color: var(--secondary); }
+  .mm-child-menu-btn.c-action { color: var(--success); }
+  /* 右下角控件（借用流程图界面的控件风格） */
+  .mm-controls { position: absolute; right: 12px; bottom: 12px; z-index: 60; display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: var(--shadow-md); }
+  .mm-sub { position: absolute; width: 250px; min-height: 96px; background: var(--surface); border: 1.5px solid var(--border-separator); border-radius: 10px; padding: 8px 10px; box-shadow: var(--shadow-sm); z-index: 2; }
+  .mm-sub:hover { border-color: var(--brand); }
+  .mm-sub.c-effect { border-left: 4px solid var(--error); }
+  .mm-sub.c-cause { border-left: 4px solid var(--warning); }
+  .mm-sub.c-control { border-left: 4px solid var(--secondary); }
+  .mm-sub.c-action { border-left: 4px solid var(--success); }
+  .mm-sub-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .mm-sub-label { font-size: 10px; font-weight: 700; color: var(--brand); text-transform: uppercase; letter-spacing: 0.5px; }
+  .mm-sub.c-effect .mm-sub-label { color: var(--error); }
+  .mm-sub.c-cause .mm-sub-label { color: var(--warning); }
+  .mm-sub.c-control .mm-sub-label { color: var(--secondary); }
+  .mm-sub.c-action .mm-sub-label { color: var(--success); }
+  .mm-sub-del { border: none; background: transparent; color: var(--text-tertiary); cursor: pointer; width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mm-sub-del:hover { background: var(--dec-bg); color: var(--error); }
+  .mm-sub-del .ms-icon, .mm-sub-del .material-symbols-outlined { font-size: 14px; }
+  .mm-sub textarea { width: 100%; border: none; outline: none; background: transparent; font-size: 12px; color: var(--text-primary); font-family: inherit; resize: none; line-height: 1.4; min-height: 44px; }
+  .mm-empty { position: absolute; text-align: center; color: var(--text-tertiary); font-size: 13px; width: 340px; line-height: 1.8; }
+
+  /* ===== S/O/D 打分标准弹窗 ===== */
+  .score-guide-mask { position: fixed; inset: 0; background: rgba(27,28,26,0.45); z-index: 950; display: flex; align-items: center; justify-content: center; }
+  .score-guide { width: min(880px, 94vw); max-height: 84vh; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; }
+  .sg-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border-separator); }
+  .sg-title { font-size: 15px; font-weight: 700; color: var(--brand); }
+  .sg-close { border: none; background: transparent; color: var(--text-tertiary); cursor: pointer; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .sg-close:hover { background: var(--surface-container); color: var(--error); }
+  .sg-body { overflow: auto; padding: 14px 18px; }
+  .sg-foot { padding: 10px 18px; border-top: 1px solid var(--border-separator); font-size: 11px; color: var(--text-tertiary); }
+  .sg-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .sg-table th { background: var(--surface-container); color: var(--text-secondary); text-align: left; padding: 7px 10px; font-size: 11px; position: sticky; top: 0; z-index: 1; }
+  .sg-table td { padding: 7px 10px; border-bottom: 1px solid var(--border-separator); color: var(--text-primary); vertical-align: top; }
+  .sg-table tr.cur { background: var(--brand-light); outline: 1.5px solid var(--brand); }
+  .sg-table .sg-val { font-weight: 700; color: var(--brand); width: 46px; }
+  .sg-table .sg-lv { font-weight: 600; width: 96px; white-space: nowrap; }
+  .sg-cur-tag { font-size: 10px; font-weight: 700; color: #fff; background: var(--brand); border-radius: 8px; text-align: center; width: 46px; }
+
+  /* ===== 右侧 PFMEA 面板：列表式编辑 ===== */
+  .fm-list-editor { display: flex; flex-direction: column; gap: 6px; }
+  .fm-item-row { display: flex; align-items: flex-start; gap: 4px; }
+  .fm-item-row textarea { flex: 1; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: inherit; background: var(--surface); color: var(--text-primary); resize: vertical; min-height: 34px; line-height: 1.4; }
+  .fm-item-row textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-light); }
+  .fm-score-title { display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px; font-weight: 700; color: var(--text-tertiary); margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ===== Topbar ===== -->
+<div class="topbar">
+  <div class="topbar-title">
+    <span class="material-symbols-outlined">account_tree</span>
+    Process Flow
+  </div>
+  <div class="topbar-sep"></div>
+  <button class="topbar-btn" id="undoBtn" onclick="undo()" title="撤销 (Ctrl+Z)" disabled><span class="material-symbols-outlined" style="font-size:18px">undo</span>撤销</button>
+  <button class="topbar-btn" id="redoBtn" onclick="redo()" title="重做 (Ctrl+Y / Ctrl+Shift+Z)" disabled><span class="material-symbols-outlined" style="font-size:18px">redo</span>重做</button>
+  <div class="topbar-sep"></div>
+  <select class="topbar-select" id="partSelect">
+    <option value="BLDC-36V">BLDC-36V - Rev A | 36V无刷电机</option>
+    <option value="BLDC-48V">BLDC-48V - Rev B | 48V无刷电机</option>
+  </select>
+  <div class="topbar-sep"></div>
+  <button class="topbar-btn" onclick="renumberAll()"><span class="material-symbols-outlined" style="font-size:18px">format_list_numbered</span>重编号</button>
+  <button class="topbar-btn" onclick="clearCanvas()"><span class="material-symbols-outlined" style="font-size:18px">delete_sweep</span>清空</button>
+  <div class="topbar-spacer"></div>
+  <button class="topbar-btn" onclick="exportData()"><span class="material-symbols-outlined" style="font-size:18px">download</span>导出</button>
+  <button class="topbar-btn primary" onclick="saveFlow()"><span class="material-symbols-outlined" style="font-size:18px">save</span>保存</button>
+</div>
+
+<!-- ===== Main Layout ===== -->
+<div class="layout">
+  <!-- Left: 节点库 / 失效模式库（按工作模式动态切换） -->
+  <div class="left-panel" id="leftPanel"></div>
+
+  <!-- Center: Canvas (无限画布) -->
+  <div class="canvas-viewport" id="canvasViewport" ondragover="onCanvasDragOver(event)" ondrop="onCanvasDrop(event)">
+    <div class="canvas" id="canvas">
+      <svg id="edges-svg" style="overflow:visible;position:absolute;top:0;left:0;width:80000px;height:80000px;pointer-events:none;">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="edge-arrow" />
+          </marker>
+        </defs>
+      </svg>
+    </div>
+    <div class="canvas-hint" id="canvasHint" style="display:none">
+      <span class="material-symbols-outlined">account_tree</span>
+      <p>从左侧拖拽节点到此处开始编排工艺流程</p>
+    </div>
+    <!-- 画布工具栏 -->
+    <div class="canvas-toolbar">
+      <button class="tb-btn active" id="tbSelect" onclick="setMode('select')" title="选择模式"><span class="material-symbols-outlined" style="font-size:20px">arrow_selector_tool</span></button>
+      <button class="tb-btn" id="tbPan" onclick="setMode('pan')" title="拖动/平移"><span class="material-symbols-outlined" style="font-size:20px">pan_tool</span></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="autoLayout()" title="整理视图（线段等长）"><span class="material-symbols-outlined" style="font-size:20px">auto_awesome</span></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="zoomBy(1.25)" title="放大"><span class="material-symbols-outlined" style="font-size:20px">zoom_in</span></button>
+      <div class="tb-zoom-info" id="zoomInfo">100%</div>
+      <button class="tb-btn" onclick="zoomBy(0.8)" title="缩小"><span class="material-symbols-outlined" style="font-size:20px">zoom_out</span></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="fitToWindow()" title="适应窗口"><span class="material-symbols-outlined" style="font-size:20px">fit_screen</span></button>
+      <button class="tb-btn" onclick="resetView()" title="重置视图"><span class="material-symbols-outlined" style="font-size:20px">center_focus_strong</span></button>
+    </div>
+    <!-- 右下角告警徽章 -->
+    <div class="alert-badge" id="alertBadge" style="display:none" onclick="clickAlertBadge()">
+      <button class="alert-badge-hide" onclick="event.stopPropagation();document.getElementById('alertBadge').style.display='none'">×</button>
+      <span class="material-symbols-outlined ab-icon" id="alertIcon">error</span>
+      <div>
+        <div id="alertTitle">流程完整性告警</div>
+        <div class="ab-detail" id="alertDetail"></div>
+      </div>
+    </div>
+    <!-- 框选矩形 -->
+    <div class="marquee" id="marquee" style="display:none"></div>
+    <!-- 工作流悬浮窗：Process flow → PFMEA → CP → WI -->
+    <div class="workflow-float" id="workflowFloat">
+      <div class="wf-step active" id="wfProcessFlow" data-mode="process" onclick="switchWorkflowMode('process')" title="单击切换工作模式 | 双击或右键切换锁定" ondblclick="event.preventDefault(); event.stopPropagation(); toggleLock()" oncontextmenu="event.preventDefault(); event.stopPropagation(); toggleLock()">
+        <span class="material-symbols-outlined" id="wfPfIcon">play_circle</span>
+        Process Flow
+      </div>
+      <div class="wf-arrow"><span class="material-symbols-outlined">chevron_right</span></div>
+      <div class="wf-step" id="wfPfmea" data-mode="pfmea" onclick="switchWorkflowMode('pfmea')" title="单击切换工作模式">
+        <span class="material-symbols-outlined">analytics</span>
+        PFMEA
+      </div>
+      <div class="wf-arrow"><span class="material-symbols-outlined">chevron_right</span></div>
+      <div class="wf-step" id="wfCP" data-mode="cp" onclick="switchWorkflowMode('cp')" title="单击切换工作模式">
+        <span class="material-symbols-outlined">rule</span>
+        CP
+      </div>
+      <div class="wf-arrow"><span class="material-symbols-outlined">chevron_right</span></div>
+      <div class="wf-step" id="wfWI" data-mode="wi" onclick="switchWorkflowMode('wi')" title="单击切换工作模式">
+        <span class="material-symbols-outlined">menu_book</span>
+        WI
+      </div>
+    </div>
+  </div>
+
+  <!-- 可拖拽宽度调整条 -->
+  <div class="resizer" id="panelResizer" title="拖动调整右侧面板宽度"></div>
+
+  <!-- Right: Properties Panel -->
+  <div class="right-panel" id="rightPanel">
+    <div class="prop-empty">
+      <span class="material-symbols-outlined">pan_tool</span>
+      <p>选中一个节点查看和编辑属性</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Status Bar ===== -->
+<div class="statusbar">
+  <div class="status-item"><span class="material-symbols-outlined" style="font-size:14px">circle</span> 节点: <strong id="stNodes">0</strong></div>
+  <div class="status-item"><span class="material-symbols-outlined" style="font-size:14px">timeline</span> 连线: <strong id="stEdges">0</strong></div>
+  <div class="status-item"><span class="material-symbols-outlined" style="font-size:14px">warning</span> 特殊特性: <strong id="stSC">0</strong></div>
+  <div class="status-item" id="stHistory"><span class="material-symbols-outlined" style="font-size:14px">history</span> 历史: <strong id="stHistoryCount">0</strong> 步</div>
+  <div class="topbar-spacer"></div>
+  <div class="status-item" id="stSaved">最后保存: 未保存</div>
+</div>
+
+<!-- ===== Context Menu ===== -->
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxAction('duplicate')"><span class="material-symbols-outlined" style="font-size:18px">content_copy</span>复制节点</div>
+  <div class="ctx-item" onclick="ctxAction('delete')"><span class="material-symbols-outlined" style="font-size:18px">delete</span>删除节点</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('renumber')"><span class="material-symbols-outlined" style="font-size:18px">edit</span>修改编号</div>
+  <div class="ctx-item" onclick="ctxAction('toggleSC')"><span class="material-symbols-outlined" style="font-size:18px">star</span>切换特殊特性</div>
+</div>
+
+<!-- ===== FMEA 思维导图设计弹窗（无限画布 · 向右发散） ===== -->
+<div class="modal-mask" id="fmeaModal" style="display:none">
+  <div class="mm-toolbar">
+    <div class="mm-title"><span class="material-symbols-outlined">account_tree</span> FMEA 思维导图分析</div>
+    <div class="mm-badge">IATF 16949</div>
+    <div class="mm-sep"></div>
+    <button class="tb-btn" onclick="mmZoomBy(1.25)" title="放大"><span class="material-symbols-outlined" style="font-size:20px">zoom_in</span></button>
+    <div class="tb-zoom-info" id="mmZoomInfo">100%</div>
+    <button class="tb-btn" onclick="mmZoomBy(0.8)" title="缩小"><span class="material-symbols-outlined" style="font-size:20px">zoom_out</span></button>
+    <button class="tb-btn" onclick="mmFitView()" title="适应视图"><span class="material-symbols-outlined" style="font-size:20px">fit_screen</span></button>
+    <div class="mm-spacer"></div>
+    <button class="topbar-btn" onclick="mmAddFM()"><span class="material-symbols-outlined" style="font-size:18px">add</span>添加失效模式</button>
+    <button class="topbar-btn" onclick="exportFmeaCsv()" title="导出 FMEA 为 CSV"><span class="material-symbols-outlined" style="font-size:18px">download</span>导出 CSV</button>
+    <button class="topbar-btn primary" onclick="closeFmeaMindMap(true)"><span class="material-symbols-outlined" style="font-size:18px">save</span>保存并关闭</button>
+    <button class="topbar-btn" onclick="closeFmeaMindMap(false)"><span class="material-symbols-outlined" style="font-size:18px">close</span>取消</button>
+  </div>
+  <div class="mm-canvas" id="mmCanvas">
+    <div class="mm-grid" id="mmGrid"></div>
+    <div class="mm-stage" id="mmStage">
+      <svg id="mmSvg" style="position:absolute;top:0;left:0;width:60000px;height:60000px;overflow:visible;pointer-events:none;"></svg>
+      <div id="mmNodes" style="position:absolute;top:0;left:0;width:60000px;height:60000px;"></div>
+    </div>
+    <!-- 右下角控件（复用流程图界面的控件） -->
+    <div class="mm-controls">
+      <button class="tb-btn" onclick="mmZoomBy(1.25)" title="放大"><span class="material-symbols-outlined" style="font-size:20px">zoom_in</span></button>
+      <button class="tb-btn" onclick="mmZoomBy(0.8)" title="缩小"><span class="material-symbols-outlined" style="font-size:20px">zoom_out</span></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="layoutMindMap(); mmFitView();" title="自动布局（不叠加）"><span class="material-symbols-outlined" style="font-size:20px">auto_awesome</span></button>
+      <button class="tb-btn" onclick="mmFitView()" title="适应视图"><span class="material-symbols-outlined" style="font-size:20px">fit_screen</span></button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" onclick="mmResetView()" title="重置视图"><span class="material-symbols-outlined" style="font-size:20px">center_focus_strong</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== S/O/D 打分标准弹窗（IATF 16949 / AIAG-VDA 准则） ===== -->
+<div class="score-guide-mask" id="scoreGuideModal" style="display:none" onclick="if(event.target===this)closeScoreGuide()">
+  <div class="score-guide">
+    <div class="sg-head">
+      <div class="sg-title" id="sgTitle">打分标准</div>
+      <button class="sg-close" onclick="closeScoreGuide()" title="关闭"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="sg-body" id="sgBody"></div>
+    <div class="sg-foot">评分准则参考 AIAG-VDA FMEA 手册，实际分值请结合企业 FMEA 手册。</div>
+  </div>
+</div>
+
+<script>
+// ===== State =====
+let nodes = [];
+let edges = [];
+let nextId = 1;
+let selectedId = null;
+let selectedEdge = null;     // 当前选中的连线 index 或 null
+let selectedSet = new Set(); // 多选节点集合
+let connectingFrom = null;
+let dragState = null;
+let marqueeState = null;      // 框选状态
+let ctxNodeId = null;
+let pfmeaData = {};          // { nodeId: [failureModes] } — 锁定模式下编辑的 PFMEA 数据
+let mmOpen = false;          // FMEA 思维导图弹窗是否打开
+let mmNodeId = null;         // 思维导图正在分析的节点 id
+
+// ===== 通用转义（防止输入内容破坏 HTML）=====
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ===== 图标字体兜底：Material Symbols 不可用时转为内联 SVG =====
+const ICONS = {
+  account_tree: "M22 11V3h-7v3H9V3H2v8h7V8h2v10h4v3h7v-8h-7v3h-2V8h2v3z",
+  undo: "M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z",
+  redo: "M18.4 10.6C16.55 9 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z",
+  format_list_numbered: "M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z",
+  delete_sweep: "M15 16h4v2h-4zm0-8h7v2h-7zm0 4h6v2h-6zM3 18c0 1.1.9 2 2 2h6c1.1 0 2-.9 2-2V8H3v10zM14 5h-3l-1-1H6L5 5H2v2h12z",
+  download: "M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
+  save: "M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z",
+  arrow_selector_tool: "M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z",
+  pan_tool: "M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-1.1.9-2 2-2s2 .9 2 2v7h2V3c0-1.1.9-2 2-2s2 .9 2 2v8h2V5.5c0-1.1.9-2 2-2s2 .9 2 2z",
+  auto_awesome: "M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z",
+  zoom_in: "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM10 7H9v2H7v1h2v2h1v-2h2V9h-2z",
+  zoom_out: "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z",
+  fit_screen: "M17 4h5v5h-2V6h-3V4zM4 9V6h3V4H2v5h2zm16 6v3h-3v2h5v-5h-2zM7 18H4v-3H2v5h5v-2z",
+  center_focus_strong: "M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm-7 7H3v4c0 1.1.9 2 2 2h4v-2H5v-4zM5 5h4V3H5c-1.1 0-2 .9-2 2v4h2V5zm14-2h-4v2h4v4h2V5c0-1.1-.9-2-2-2zm0 16h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4z",
+  error: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z",
+  warning: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z",
+  play_circle: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z",
+  lock: "M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z",
+  chevron_right: "M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z",
+  analytics: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-5h2v5zm4 0h-2V7h2v10zm4 0h-2v-7h2v7z",
+  rule: "M16.54 11L13 7.46l1.41-1.41 2.12 2.12 4.24-4.24 1.41 1.41L16.54 11zM11 7H2v2h9V7zm10 6.41L19.59 12 17 14.59 14.41 12 13 13.41 15.59 16 13 18.59 14.41 20 17 17.41 19.59 20 21 18.59 18.41 16 21 13.41zM11 15H2v2h9v-2z",
+  menu_book: "M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z",
+  circle: "M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2z",
+  timeline: "M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56C19.02 8.35 19 8.18 19 8c0-1.1.9-2 2-2s2 .9 2 2z",
+  history: "M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z",
+  content_copy: "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z",
+  delete: "M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z",
+  edit: "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
+  star: "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z",
+  add: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z",
+  close: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
+  expand_more: "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z",
+  precision_manufacturing: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z",
+  arrow_forward: "M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z",
+};
+function convertIcons(scope) {
+  if (!scope || !scope.querySelectorAll) return;
+  scope.querySelectorAll('span.material-symbols-outlined').forEach(span => {
+    if (span.querySelector('svg')) return; // 已转换
+    const name = (span.textContent || '').trim() || 'circle';
+    const path = ICONS[name] || ICONS.circle;
+    const fs = parseFloat(window.getComputedStyle(span).fontSize) || 20;
+    const size = Math.max(14, Math.round(fs));
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size);
+    svg.setAttribute('class', 'ms-icon');
+    svg.setAttribute('aria-hidden', 'true');
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', path);
+    p.setAttribute('fill', 'currentColor');
+    svg.appendChild(p);
+    span.replaceWith(svg);
+  });
+}
+function initIcons() {
+  convertIcons(document);
+  const obs = new MutationObserver(muts => {
+    for (const m of muts) {
+      if (m.type !== 'childList') continue;
+      for (const n of m.addedNodes) if (n.nodeType === 1) convertIcons(n);
+    }
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+}
+
+// ===== 左侧面板：按工作模式渲染（节点库 / 失效模式库）=====
+const PALETTE_CATEGORIES = [
+  { title: '加工 · Operations', types: ['operation', 'inspection'] },
+  { title: '流程 · Flow', types: ['transport', 'delay', 'storage'] },
+  { title: '边界 · Boundary', types: ['start', 'decision', 'end'] },
+];
+const FM_LIBRARY = [
+  { cat: '尺寸特性', items: [
+    { mode: '尺寸超差', en: 'Dimension out of tolerance', s: 7, o: 5, d: 5 },
+    { mode: '形位公差超差', en: 'Form/position deviation', s: 7, o: 4, d: 5 },
+    { mode: '表面粗糙度不合格', en: 'Surface roughness fail', s: 5, o: 4, d: 4 },
+  ]},
+  { cat: '装配', items: [
+    { mode: '漏装零件', en: 'Missing component', s: 8, o: 4, d: 6 },
+    { mode: '错装/装反', en: 'Wrong / mis-oriented assembly', s: 8, o: 4, d: 6 },
+    { mode: '装配不到位', en: 'Improper seating', s: 7, o: 5, d: 5 },
+    { mode: '连接松动', en: 'Loose joint', s: 7, o: 4, d: 5 },
+  ]},
+  { cat: '外观表面', items: [
+    { mode: '划伤/磕碰', en: 'Scratch / dent', s: 4, o: 5, d: 4 },
+    { mode: '毛刺/飞边', en: 'Burr / flash', s: 5, o: 5, d: 5 },
+    { mode: '外观不良', en: 'Appearance defect', s: 4, o: 4, d: 4 },
+  ]},
+  { cat: '性能功能', items: [
+    { mode: '性能不达标', en: 'Performance not met', s: 8, o: 4, d: 5 },
+    { mode: '异响/噪音', en: 'Abnormal noise', s: 6, o: 4, d: 5 },
+    { mode: '发热异常', en: 'Overheating', s: 7, o: 3, d: 5 },
+    { mode: '密封失效', en: 'Seal failure', s: 8, o: 4, d: 5 },
+    { mode: '泄漏', en: 'Leakage', s: 8, o: 3, d: 5 },
+  ]},
+  { cat: '材料', items: [
+    { mode: '材料缺陷', en: 'Material defect', s: 7, o: 3, d: 6 },
+    { mode: '混料/错料', en: 'Mixed material', s: 8, o: 3, d: 6 },
+    { mode: '变形', en: 'Deformation', s: 6, o: 4, d: 5 },
+    { mode: '断裂', en: 'Fracture', s: 9, o: 3, d: 6 },
+  ]},
+];
+function renderPalette() {
+  const input = document.getElementById('paletteSearch');
+  const q = (input && input.value || '').trim().toLowerCase();
+  const box = document.getElementById('nodePalette');
+  if (!box) return;
+  let html = '';
+  PALETTE_CATEGORIES.forEach(cat => {
+    const items = cat.types.filter(t => {
+      const cfg = TYPE_CONFIG[t];
+      return !q || (cfg.label + cfg.defaultName + t).toLowerCase().includes(q);
+    });
+    if (!items.length) return;
+    html += `<div class="palette-cat">${cat.title}</div>`;
+    items.forEach(t => {
+      const cfg = TYPE_CONFIG[t];
+      html += `
+      <div class="palette-item" draggable="true" ondragstart="onPaletteDragStart(event,'${t}')">
+        <div class="palette-symbol"><div class="sym ${cfg.symClass}">${t === 'storage' ? '' : cfg.symChar}</div></div>
+        <div class="palette-label">${cfg.label}<small>${cfg.defaultName}</small></div>
+      </div>`;
+    });
+  });
+  box.innerHTML = html || `<div class="palette-empty">无匹配节点</div>`;
+  convertIcons(box);
+}
+function renderFmLibrary() {
+  const input = document.getElementById('fmSearch');
+  const q = (input && input.value || '').trim().toLowerCase();
+  const box = document.getElementById('fmLibrary');
+  if (!box) return;
+  let html = '';
+  FM_LIBRARY.forEach(cat => {
+    const items = cat.items.filter(it => !q || (it.mode + it.en).toLowerCase().includes(q));
+    if (!items.length) return;
+    html += `<div class="palette-cat">${cat.cat}</div>`;
+    items.forEach(it => {
+      html += `
+      <div class="palette-item fm" title="点击添加到当前工序的 FMEA" onclick="addFMFromLibrary('${esc(it.mode)}',${it.s},${it.o},${it.d})">
+        <div class="palette-symbol"><div class="sym sym-dec">!</div></div>
+        <div class="palette-label">${it.mode}<small>${it.en} · S${it.s} O${it.o} D${it.d}</small></div>
+        <div class="palette-add">+</div>
+      </div>`;
+    });
+  });
+  box.innerHTML = html || `<div class="palette-empty">无匹配失效模式</div>`;
+  convertIcons(box);
+}
+function updateLeftPanel() {
+  const panel = document.getElementById('leftPanel');
+  if (!panel) return;
+  const isPfmea = currentWorkflowMode === 'pfmea';
+  if (isPfmea) {
+    panel.innerHTML = `
+      <div class="panel-title">失效模式库（点击添加到工序）</div>
+      <input class="palette-search" id="fmSearch" placeholder="搜索失效模式..." oninput="renderFmLibrary()">
+      <div class="node-palette" id="fmLibrary"></div>`;
+    renderFmLibrary();
+  } else {
+    panel.innerHTML = `
+      <div class="panel-title">节点库（拖拽到画布）</div>
+      <input class="palette-search" id="paletteSearch" placeholder="搜索节点..." oninput="renderPalette()">
+      <div class="node-palette" id="nodePalette"></div>`;
+    renderPalette();
+  }
+}
+function addFMFromLibrary(mode, s, o, d) {
+  const targetId = mmOpen ? mmNodeId : selectedId;
+  if (!targetId) {
+    alert('请先在流程图上选择（或双击打开）要分析的工序节点');
+    return;
+  }
+  addFM({ mode, severity: s, occurrence: o, detection: d });
+}
+function refreshPfmeaViews() {
+  if (mmOpen) layoutMindMap();
+  else renderProps();
+}
+
+// ===== FMEA 模式：卡片点击提示 + 双击进入思维导图 =====
+function showPfmeaHint(nodeId) {
+  let hint = document.getElementById('pfmeaHint');
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'pfmeaHint';
+    hint.className = 'pfmea-hint';
+    document.body.appendChild(hint);
+  }
+  const el = document.getElementById(nodeId);
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  hint.textContent = '双击卡片，进入 FMEA 思维导图设计';
+  hint.style.left = (r.left + r.width / 2) + 'px';
+  hint.style.top = (r.top - 44) + 'px';
+  hint.style.opacity = 1;
+}
+function hidePfmeaHint() {
+  const hint = document.getElementById('pfmeaHint');
+  if (hint) hint.style.opacity = 0;
+}
+
+// ===== FMEA 思维导图设计（无限画布 · 向右发散） =====
+const mmView = { panX: 0, panY: 0, zoom: 1 };
+let mmDragState = null;      // 画布平移状态
+let mmCardDrag = null;       // 卡片拖拽状态
+// 连线路径索引：拖拽卡片后刷新曲线
+const mmConnections = { centerFm: new Map(), fmChild: new Map() };
+
+function mkId(prefix) {
+  return (prefix || 'it') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+}
+
+// 数据归一化：兼容旧的单值字段（effect/cause/control/action → 列表，支持多条）
+function normalizeFM(fm) {
+  if (!Array.isArray(fm.effects))  fm.effects  = fm.effect  ? [{ id: mkId('fx'), text: fm.effect }]  : [];
+  if (!Array.isArray(fm.causes))   fm.causes   = fm.cause   ? [{ id: mkId('cs'), text: fm.cause }]   : [];
+  if (!Array.isArray(fm.controls)) fm.controls = fm.control ? [{ id: mkId('ct'), text: fm.control }] : [];
+  if (!Array.isArray(fm.actions))  fm.actions  = fm.action  ? [{ id: mkId('ac'), text: fm.action }]  : [];
+  delete fm.effect; delete fm.cause; delete fm.control; delete fm.action;
+  return fm;
+}
+function ensureFmData(nodeId) {
+  if (!pfmeaData[nodeId]) pfmeaData[nodeId] = [];
+  pfmeaData[nodeId].forEach(normalizeFM);
+  return pfmeaData[nodeId];
+}
+
+function openFmeaMindMap(nodeId) {
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  mmNodeId = nodeId;
+  mmOpen = true;
+  ensureFmData(nodeId);
+  hidePfmeaHint();
+  document.getElementById('fmeaModal').style.display = 'block';
+  layoutMindMap();
+  requestAnimationFrame(mmFitView);
+}
+function closeFmeaMindMap(save) {
+  mmOpen = false;
+  mmNodeId = null;
+  closeChildMenu();
+  document.getElementById('fmeaModal').style.display = 'none';
+  if (save) savePfmeaData();
+  renderProps();
+}
+
+// —— 节点增删改 ——
+function mmAddFM() {
+  if (!mmNodeId) return;
+  ensureFmData(mmNodeId).push({
+    id: mkId('fm'), mode: '',
+    effects: [], severity: 0,
+    causes: [], occurrence: 0,
+    controls: [], detection: 0,
+    actions: []
+  });
+  layoutMindMap();
+}
+function delMMFM(fmId) {
+  if (!mmNodeId || !pfmeaData[mmNodeId]) return;
+  pfmeaData[mmNodeId] = pfmeaData[mmNodeId].filter(f => f.id !== fmId);
+  if (pfmeaData[mmNodeId].length === 0) delete pfmeaData[mmNodeId];
+  layoutMindMap();
+}
+function mmAddChild(fmId, listKey) {
+  const fm = ensureFmData(mmNodeId).find(f => f.id === fmId);
+  if (!fm) return;
+  fm[listKey].push({ id: mkId('it'), text: '' });
+  layoutMindMap();
+}
+function delMMChild(fmId, listKey, itemId) {
+  const fm = ensureFmData(mmNodeId).find(f => f.id === fmId);
+  if (!fm) return;
+  fm[listKey] = fm[listKey].filter(i => i.id !== itemId);
+  layoutMindMap();
+}
+function updateMmFM(fmId, key, val) {
+  const fm = ensureFmData(mmNodeId).find(f => f.id === fmId);
+  if (!fm) return;
+  if (key === 'severity' || key === 'occurrence' || key === 'detection') val = parseInt(val) || 0;
+  fm[key] = val;
+  if (key === 'severity' || key === 'occurrence' || key === 'detection') {
+    const card = document.querySelector(`.mm-branch[data-fm-id="${fmId}"]`);
+    if (card) {
+      const rpn = (fm.severity || 0) * (fm.occurrence || 0) * (fm.detection || 0);
+      const badge = card.querySelector('.mm-rpn');
+      if (badge) { badge.textContent = 'RPN ' + rpn + ' · ' + riskLevelName(rpn); badge.className = 'mm-rpn ' + (rpn === 0 ? 'zero' : rpnLevel(rpn)); }
+      ['severity', 'occurrence', 'detection'].forEach(k => {
+        const el = card.querySelector(`.mm-score input[data-k="${k}"]`);
+        if (el && el.value !== String(fm[k])) el.value = fm[k];
+      });
+    }
+  }
+}
+function updateMMItem(fmId, listKey, itemId, val) {
+  const fm = ensureFmData(mmNodeId).find(f => f.id === fmId);
+  if (!fm) return;
+  const item = fm[listKey].find(i => i.id === itemId);
+  if (item) item.text = val;
+}
+function mmSelect(fmId) {
+  document.querySelectorAll('.mm-branch').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`.mm-branch[data-fm-id="${fmId}"]`);
+  if (card) card.classList.add('selected');
+}
+function riskLevelName(rpn) {
+  if (rpn >= 100) return '高风险';
+  if (rpn >= 40) return '中风险';
+  if (rpn >= 1) return '低风险';
+  return '无风险';
+}
+
+// —— 布局常量与元数据 ——
+// 水平间距默认取"半个卡片宽度"：中央→失效模式 = FM 宽的一半，失效模式→子节点 = 子节点宽的一半
+const MM = { CENTER_W: 330, CENTER_H: 210, FM_W: 270, FM_H: 160, CHILD_W: 250, CHILD_H: 96, V_GAP: 40, GHOST_S: 30 };
+const MM_CHILD_META = [
+  { key: 'effects',  label: '失效后果', en: 'Failure Effect',       cls: 'c-effect'  },
+  { key: 'causes',   label: '失效原因', en: 'Failure Cause',        cls: 'c-cause'   },
+  { key: 'controls', label: '现行控制', en: 'Current Control',      cls: 'c-control' },
+  { key: 'actions',  label: '建议措施', en: 'Recommended Action',   cls: 'c-action'  },
+];
+function mmChildItems(fm) {
+  const list = [];
+  MM_CHILD_META.forEach(m => (fm[m.key] || []).forEach(it => list.push({ meta: m, item: it })));
+  return list;
+}
+
+// —— 构建节点 ——
+function buildMmCenterEl(node) {
+  const cfg = TYPE_CONFIG[node.type] || TYPE_CONFIG.operation;
+  const pc = (node.productChars || []).map(i => i.value).filter(Boolean).join(' / ');
+  const pp = (node.processParams || []).map(i => i.value).filter(Boolean).join(' / ');
+  const el = document.createElement('div');
+  el.className = 'mm-center';
+  el.dataset.mmRole = 'center';
+  el.innerHTML = `
+    <div class="mm-center-tag">工艺信息 · Process Info</div>
+    <div class="mm-center-head">
+      <div class="sym ${cfg.symClass}">${node.type === 'storage' ? '' : cfg.symChar}</div>
+      <span class="mm-center-id">${esc(node.stepNo)}</span>
+    </div>
+    <div class="mm-center-name">${esc(node.name)}</div>
+    <div class="mm-center-meta">${cfg.label}${node.equipment ? ' · ' + esc(node.equipment) : ''}</div>
+    ${pc ? `<div class="mm-center-line"><b>PC</b>${esc(pc)}</div>` : ''}
+    ${pp ? `<div class="mm-center-line"><b>PP</b>${esc(pp)}</div>` : ''}
+    <div class="mm-center-note">依据 IATF 16949 · 思维导图向右发散构建 PFMEA</div>
+  `;
+  return el;
+}
+function buildMmBranchEl(fm) {
+  const rpn = (fm.severity || 0) * (fm.occurrence || 0) * (fm.detection || 0);
+  const rpnCls = rpn === 0 ? 'zero' : rpnLevel(rpn);
+  const el = document.createElement('div');
+  el.className = 'mm-branch';
+  el.dataset.fmId = fm.id;
+  el.dataset.mmRole = 'fm';
+  el.addEventListener('click', (e) => { e.stopPropagation(); mmSelect(fm.id); });
+  el.innerHTML = `
+    <div class="mm-branch-head">
+      <span class="mm-branch-tag">失效模式</span>
+      <div class="mm-branch-title"><input value="${esc(fm.mode)}" placeholder="潜在失效模式..." oninput="updateMmFM('${fm.id}','mode',this.value)" onclick="event.stopPropagation()"></div>
+      <button class="mm-branch-del" onclick="event.stopPropagation();delMMFM('${fm.id}')" title="删除失效模式"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="mm-scores">
+      <div class="mm-score"><label>S <b class="mm-q" onclick="event.stopPropagation();openScoreGuide('severity', parseInt(this.closest('.mm-score').querySelector('input').value)||0)" title="查看严重度 S 打分标准">?</b></label><input type="number" min="1" max="10" data-k="severity" value="${fm.severity || ''}" placeholder="1-10" oninput="updateMmFM('${fm.id}','severity',this.value)" onclick="event.stopPropagation()"></div>
+      <div class="mm-score"><label>O <b class="mm-q" onclick="event.stopPropagation();openScoreGuide('occurrence', parseInt(this.closest('.mm-score').querySelector('input').value)||0)" title="查看频度 O 打分标准">?</b></label><input type="number" min="1" max="10" data-k="occurrence" value="${fm.occurrence || ''}" placeholder="1-10" oninput="updateMmFM('${fm.id}','occurrence',this.value)" onclick="event.stopPropagation()"></div>
+      <div class="mm-score"><label>D <b class="mm-q" onclick="event.stopPropagation();openScoreGuide('detection', parseInt(this.closest('.mm-score').querySelector('input').value)||0)" title="查看探测度 D 打分标准">?</b></label><input type="number" min="1" max="10" data-k="detection" value="${fm.detection || ''}" placeholder="1-10" oninput="updateMmFM('${fm.id}','detection',this.value)" onclick="event.stopPropagation()"></div>
+    </div>
+    <div class="mm-rpn-row"><div class="mm-rpn ${rpnCls}">RPN ${rpn} · ${riskLevelName(rpn)}</div></div>
+  `;
+  return el;
+}
+function buildMmChildEl(fm, meta, item) {
+  const el = document.createElement('div');
+  el.className = 'mm-sub ' + meta.cls;
+  el.dataset.mmRole = 'child';
+  el.dataset.fmId = fm.id;
+  el.dataset.itemId = item.id;
+  el.innerHTML = `
+    <div class="mm-sub-head">
+      <span class="mm-sub-label">${meta.label} · ${meta.en}</span>
+      <button class="mm-sub-del" onclick="delMMChild('${fm.id}','${meta.key}','${item.id}')" title="删除该节点"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <textarea rows="3" placeholder="${meta.label}描述..." oninput="updateMMItem('${fm.id}','${meta.key}','${item.id}',this.value)">${esc(item.text)}</textarea>
+  `;
+  return el;
+}
+
+// —— 曲线连接（记录路径以便拖拽后刷新） ——
+function mmCurveD(x1, y1, x2, y2) {
+  const dx = Math.max(50, Math.abs(x2 - x1) * 0.5);
+  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+}
+function mmCurve(x1, y1, x2, y2, cls, id) {
+  const svg = document.getElementById('mmSvg');
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', mmCurveD(x1, y1, x2, y2));
+  p.setAttribute('class', cls);
+  if (id) {
+    p.setAttribute('data-mm-id', id);
+    if (id.indexOf('cf:') === 0) mmConnections.centerFm.set(id, p);
+    else if (id.indexOf('fc:') === 0) mmConnections.fmChild.set(id, p);
+  }
+  svg.appendChild(p);
+  return p;
+}
+
+// —— 布局：向右发散的树形结构（槽位防重叠） ——
+function layoutMindMap() {
+  if (!mmOpen) return;
+  const node = nodes.find(n => n.id === mmNodeId);
+  if (!node) return;
+  const fms = ensureFmData(mmNodeId);
+  const svg = document.getElementById('mmSvg');
+  const box = document.getElementById('mmNodes');
+  svg.innerHTML = '';
+  box.innerHTML = '';
+  closeChildMenu();
+  mmConnections.centerFm.clear();
+  mmConnections.fmChild.clear();
+
+  const centerY = 0;
+  // 水平间距默认半个卡片宽度（生成新卡片与自动布局时自动应用），按"卡片边缘到边缘"计算
+  const gapCenterFm = Math.round(MM.FM_W / 2);            // 中央 → 失效模式：半个 FM 卡片宽度
+  const gapFmChild = Math.round(MM.CHILD_W / 2);          // 失效模式 → 子节点：半个子节点卡片宽度
+  const fmLeft = MM.CENTER_W / 2 + gapCenterFm;           // 失效模式卡左缘 = 中央卡右缘 + 半个 FM 宽
+  const fmX = fmLeft + MM.FM_W / 2;                       // 失效模式卡中心
+  const fmRight = fmLeft + MM.FM_W;                       // 失效模式卡右缘
+  const childX = fmRight + gapFmChild;                    // 子节点列 x = FM 卡右缘 + 半个子节点卡宽
+  const gHalf = MM.GHOST_S / 2;                           // ＋按钮半径
+
+  // 中央工艺信息卡片
+  const centerEl = buildMmCenterEl(node);
+  centerEl.style.left = (-MM.CENTER_W / 2) + 'px';
+  centerEl.style.top = (centerY - MM.CENTER_H / 2) + 'px';
+  box.appendChild(centerEl);
+
+  // 每个失效模式的子树高度与纵向槽位（槽位 ≥ 卡片高度，保证不叠加）
+  const centers = fms.map(fm => {
+    const kids = mmChildItems(fm);
+    const kH = kids.length ? kids.length * (MM.CHILD_H + MM.V_GAP) - MM.V_GAP : MM.CHILD_H;
+    return { fm, kids, kH };
+  });
+  const slotH = c => Math.max(c.kH, MM.FM_H + 16);
+  const totalH = centers.reduce((s, c) => s + slotH(c), 0) + Math.max(0, centers.length - 1) * MM.V_GAP;
+  const totalSlot = Math.max(totalH, MM.CENTER_H);
+
+  let cursor = -totalSlot / 2;
+  let lastFmY = centerY;
+
+  if (!centers.length) {
+    const empty = document.createElement('div');
+    empty.className = 'mm-empty';
+    empty.style.left = (fmX - 170) + 'px';
+    empty.style.top = (centerY + 90) + 'px';
+    empty.innerHTML = '暂无失效模式。<br>点击右侧 <b>＋ 失效模式</b> 添加，<br>或从左侧"失效模式库"选择常用失效模式。';
+    box.appendChild(empty);
+  } else {
+    centers.forEach(c => {
+      const topY = cursor;
+      const slot = slotH(c);
+      const kids = c.kids;
+      const kidPos = [];
+      // 子节点列在槽位内垂直居中
+      const kidsStart = topY + (slot - c.kH) / 2;
+      kids.forEach((k, i) => {
+        const y = kidsStart + i * (MM.CHILD_H + MM.V_GAP);
+        const el = buildMmChildEl(c.fm, k.meta, k.item);
+        el.style.left = childX + 'px';
+        el.style.top = y + 'px';
+        box.appendChild(el);
+        kidPos.push({ x: childX, y: y + MM.CHILD_H / 2 });
+      });
+      // 失效模式卡居中于槽位
+      const fmY = topY + slot / 2;
+      const fmEl = buildMmBranchEl(c.fm);
+      fmEl.style.left = fmLeft + 'px';
+      fmEl.style.top = (fmY - MM.FM_H / 2) + 'px';
+      box.appendChild(fmEl);
+
+      mmCurve(MM.CENTER_W / 2, centerY, fmLeft, fmY, 'mm-line', 'cf:' + c.fm.id);
+      kids.forEach((k, i) => {
+        mmCurve(fmRight, fmY, kidPos[i].x, kidPos[i].y, 'mm-line-sub', 'fc:' + c.fm.id + ':' + k.item.id);
+      });
+
+      // "＋"按钮：放在失效模式卡右侧中间
+      const ghostC = buildMmGhost('添加分支节点');
+      ghostC.dataset.mmGhost = 'child:' + c.fm.id;
+      ghostC.style.left = (fmRight - gHalf) + 'px';
+      ghostC.style.top = (fmY - gHalf) + 'px';
+      ghostC.onclick = (e) => { e.stopPropagation(); mmShowChildMenu(c.fm.id, ghostC); };
+      box.appendChild(ghostC);
+
+      lastFmY = fmY;
+      cursor = topY + slot + MM.V_GAP;
+    });
+  }
+
+  // "＋"按钮：放在工艺信息卡右侧中间（添加失效模式）
+  const ghostFm = buildMmGhost('添加失效模式');
+  ghostFm.dataset.mmGhost = 'fm';
+  ghostFm.style.left = (MM.CENTER_W / 2 - gHalf) + 'px';
+  ghostFm.style.top = (centerY - gHalf) + 'px';
+  ghostFm.onclick = (e) => { e.stopPropagation(); mmAddFM(); };
+  box.appendChild(ghostFm);
+  mmSyncGhosts();
+}
+
+// —— "＋"按钮与子节点类型选择菜单 ——
+function buildMmGhost(label) {
+  const el = document.createElement('div');
+  el.className = 'mm-ghost';
+  el.title = label;
+  el.textContent = '+';
+  return el;
+}
+function mmShowChildMenu(fmId, ghostEl) {
+  closeChildMenu();
+  const menu = document.createElement('div');
+  menu.className = 'mm-child-menu';
+  menu.style.left = (ghostEl.offsetLeft + ghostEl.offsetWidth + 6) + 'px';
+  menu.style.top = (ghostEl.offsetTop - 6) + 'px';
+  MM_CHILD_META.forEach(m => {
+    const b = document.createElement('button');
+    b.className = 'mm-child-menu-btn ' + m.cls;
+    b.textContent = '+ ' + m.label;
+    b.onclick = () => { closeChildMenu(); mmAddChild(fmId, m.key); };
+    menu.appendChild(b);
+  });
+  document.getElementById('mmNodes').appendChild(menu);
+}
+function closeChildMenu() {
+  const m = document.getElementById('mmChildMenu');
+  if (m) m.remove();
+}
+
+// —— 卡片拖拽（按住卡片空白处拖动） ——
+document.getElementById('mmNodes').addEventListener('mousedown', (e) => {
+  const card = e.target.closest('.mm-branch, .mm-sub, .mm-center');
+  if (!card) return;
+  if (e.target.closest('input, textarea, button, .mm-q, .mm-child-menu, .mm-ghost')) return;
+  e.preventDefault();
+  mmCardDrag = {
+    el: card,
+    startX: e.clientX,
+    startY: e.clientY,
+    origX: parseFloat(card.style.left) || 0,
+    origY: parseFloat(card.style.top) || 0
+  };
+  card.classList.add('mm-dragging');
+  document.addEventListener('mousemove', mmCardDragMove);
+  document.addEventListener('mouseup', mmCardDragEnd);
+});
+function mmCardDragMove(e) {
+  if (!mmCardDrag) return;
+  // 卡片位于世界坐标（受缩放影响），屏幕位移需除以缩放系数才能跟随鼠标
+  const dx = (e.clientX - mmCardDrag.startX) / mmView.zoom;
+  const dy = (e.clientY - mmCardDrag.startY) / mmView.zoom;
+  mmCardDrag.el.style.left = (mmCardDrag.origX + dx) + 'px';
+  mmCardDrag.el.style.top = (mmCardDrag.origY + dy) + 'px';
+  // "+" 按钮吸附在卡片右侧中间，随卡片移动
+  mmSyncGhosts();
+}
+// 让每个"＋"按钮始终贴在所属卡片的右侧中间（随拖拽移动）
+function mmSyncGhosts() {
+  const gHalf = MM.GHOST_S / 2;
+  const centerEl = document.querySelector('.mm-center');
+  const fmGhost = document.querySelector('.mm-ghost[data-mm-ghost="fm"]');
+  if (centerEl && fmGhost) {
+    fmGhost.style.left = (centerEl.offsetLeft + centerEl.offsetWidth - gHalf) + 'px';
+    fmGhost.style.top = (centerEl.offsetTop + centerEl.offsetHeight / 2 - gHalf) + 'px';
+  }
+  document.querySelectorAll('.mm-ghost[data-mm-ghost^="child:"]').forEach((g) => {
+    const fmId = g.dataset.mmGhost.slice('child:'.length);
+    const fmEl = document.querySelector(`.mm-branch[data-fm-id="${fmId}"]`);
+    if (!fmEl) return;
+    g.style.left = (fmEl.offsetLeft + fmEl.offsetWidth - gHalf) + 'px';
+    g.style.top = (fmEl.offsetTop + fmEl.offsetHeight / 2 - gHalf) + 'px';
+  });
+}
+function mmCardDragEnd() {
+  if (!mmCardDrag) return;
+  mmCardDrag.el.classList.remove('mm-dragging');
+  mmRefreshAllCurves();
+  mmCardDrag = null;
+  document.removeEventListener('mousemove', mmCardDragMove);
+  document.removeEventListener('mouseup', mmCardDragEnd);
+}
+// 拖拽后按卡片当前位置刷新所有连线
+function mmRefreshAllCurves() {
+  const centerEl = document.querySelector('.mm-center');
+  mmConnections.centerFm.forEach((p, id) => {
+    const fmId = id.slice(3);
+    const fmEl = document.querySelector(`.mm-branch[data-fm-id="${fmId}"]`);
+    if (!centerEl || !fmEl) return;
+    p.setAttribute('d', mmCurveD(
+      centerEl.offsetLeft + centerEl.offsetWidth, centerEl.offsetTop + centerEl.offsetHeight / 2,
+      fmEl.offsetLeft, fmEl.offsetTop + fmEl.offsetHeight / 2
+    ));
+  });
+  mmConnections.fmChild.forEach((p, id) => {
+    const parts = id.split(':');
+    const fmId = parts[1], itemId = parts[2];
+    const fmEl = document.querySelector(`.mm-branch[data-fm-id="${fmId}"]`);
+    const target = document.querySelector(`.mm-sub[data-fm-id="${fmId}"][data-item-id="${itemId}"]`);
+    if (!fmEl || !target) return;
+    p.setAttribute('d', mmCurveD(
+      fmEl.offsetLeft + fmEl.offsetWidth, fmEl.offsetTop + fmEl.offsetHeight / 2,
+      target.offsetLeft, target.offsetTop + target.offsetHeight / 2
+    ));
+  });
+}
+
+// —— 无限画布：平移 / 缩放 / 适应 ——
+function mmApplyView() {
+  const stage = document.getElementById('mmStage');
+  if (!stage) return;
+  stage.style.transform = `translate(${mmView.panX}px, ${mmView.panY}px) scale(${mmView.zoom})`;
+  const zi = document.getElementById('mmZoomInfo');
+  if (zi) zi.textContent = Math.round(mmView.zoom * 100) + '%';
+  const grid = document.getElementById('mmGrid');
+  if (grid) {
+    const gs = 24 * mmView.zoom;
+    grid.style.backgroundSize = `${gs}px ${gs}px`;
+    grid.style.backgroundPosition = `${mmView.panX}px ${mmView.panY}px`;
+  }
+}
+function mmZoomBy(factor) {
+  const canvas = document.getElementById('mmCanvas');
+  const r = canvas.getBoundingClientRect();
+  const cx = r.width / 2, cy = r.height / 2;
+  const nz = Math.max(0.15, Math.min(3, mmView.zoom * factor));
+  const ratio = nz / mmView.zoom;
+  mmView.panX = cx - (cx - mmView.panX) * ratio;
+  mmView.panY = cy - (cy - mmView.panY) * ratio;
+  mmView.zoom = nz;
+  mmApplyView();
+}
+function mmFitView() {
+  const canvas = document.getElementById('mmCanvas');
+  if (!canvas || !canvas.clientWidth) return;
+  const nodesBox = document.getElementById('mmNodes');
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodesBox.querySelectorAll('.mm-center, .mm-branch, .mm-sub, .mm-ghost').forEach(el => {
+    const x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+    if (!isFinite(x)) return;
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x + el.offsetWidth);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y + el.offsetHeight);
+  });
+  if (!isFinite(minX)) { mmView.panX = 60; mmView.panY = 60; mmView.zoom = 1; mmApplyView(); return; }
+  const pad = 90;
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  const z = Math.max(0.15, Math.min(1.2, Math.min((cw - pad * 2) / (maxX - minX), (ch - pad * 2) / (maxY - minY))));
+  mmView.zoom = z;
+  mmView.panX = (cw - (maxX - minX) * z) / 2 - minX * z;
+  mmView.panY = (ch - (maxY - minY) * z) / 2 - minY * z;
+  mmApplyView();
+}
+function mmResetView() {
+  const canvas = document.getElementById('mmCanvas');
+  if (!canvas) return;
+  mmView.zoom = 1;
+  mmView.panX = canvas.clientWidth / 2;
+  mmView.panY = canvas.clientHeight / 2;
+  mmApplyView();
+}
+// 平移（拖拽空白处）
+document.getElementById('mmCanvas').addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  if (e.target.closest('.mm-branch') || e.target.closest('.mm-sub') ||
+      e.target.closest('.mm-center') || e.target.closest('.mm-ghost') ||
+      e.target.closest('.mm-child-menu') || e.target.closest('.mm-controls')) return;
+  mmDragState = { sx: e.clientX, sy: e.clientY, px: mmView.panX, py: mmView.panY };
+  document.getElementById('mmCanvas').classList.add('mm-panning');
+  document.addEventListener('mousemove', mmOnPan);
+  document.addEventListener('mouseup', mmOnPanEnd);
+});
+// 点击空白处关闭子节点类型菜单
+document.getElementById('mmCanvas').addEventListener('click', (e) => {
+  if (!e.target.closest('.mm-child-menu') && !e.target.closest('.mm-ghost')) closeChildMenu();
+});
+function mmOnPan(e) {
+  if (!mmDragState) return;
+  mmView.panX = mmDragState.px + (e.clientX - mmDragState.sx);
+  mmView.panY = mmDragState.py + (e.clientY - mmDragState.sy);
+  mmApplyView();
+}
+function mmOnPanEnd() {
+  mmDragState = null;
+  document.getElementById('mmCanvas').classList.remove('mm-panning');
+  document.removeEventListener('mousemove', mmOnPan);
+  document.removeEventListener('mouseup', mmOnPanEnd);
+}
+// 滚轮缩放（以光标为中心）
+document.getElementById('mmCanvas').addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const r = document.getElementById('mmCanvas').getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  const nz = Math.max(0.15, Math.min(3, mmView.zoom * factor));
+  const ratio = nz / mmView.zoom;
+  mmView.panX = mx - (mx - mmView.panX) * ratio;
+  mmView.panY = my - (my - mmView.panY) * ratio;
+  mmView.zoom = nz;
+  mmApplyView();
+}, { passive: false });
+window.addEventListener('resize', () => { if (mmOpen) { mmApplyView(); } });
+
+// ===== S/O/D 打分标准（AIAG-VDA / IATF 16949 准则） =====
+const SCORING_GUIDES = {
+  severity: {
+    title: '严重度 S · 对失效后果影响的评级',
+    rows: [
+      [10, '安全 / 法规', '危及操作员或顾客安全，或违反法律法规', '安全件失效、漏电、起火、排放超标'],
+      [9, '非常严重', '主要功能完全丧失，可能导致召回或重大索赔', '电机烧毁、整机无法运行'],
+      [8, '严重', '主要功能丧失但可修复，顾客强烈不满', '电机不转、性能骤降'],
+      [7, '高', '主要功能部分失效，性能明显下降', '转速/扭矩明显不足'],
+      [6, '中高', '次要功能失效，主要功能受影响但仍可用', '噪音大、温升高'],
+      [5, '中等', '性能可接受，但舒适性或便利性下降', '轻微振动、外观瑕疵'],
+      [4, '中低', '顾客能察觉缺陷，要求返工处理', '尺寸超差需返工'],
+      [3, '低', '轻微缺陷，顾客会注意但不会抱怨', '轻微划痕'],
+      [2, '很低', '很轻微缺陷，仅挑剔顾客会注意', '极轻微色差'],
+      [1, '无', '无可察觉的影响', '—'],
+    ]
+  },
+  occurrence: {
+    title: '频度 O · 失效原因发生的可能性（每千件缺陷率）',
+    rows: [
+      [10, '极高', '几乎不可避免（≥ 100‰）', '关键参数完全未受控'],
+      [9, '很高', '非常频繁（50‰）', '老设备无监控'],
+      [8, '高', '频繁（20‰）', '过程不稳定'],
+      [7, '较高', '较频繁（10‰）', '偶发工艺偏移'],
+      [6, '中等', '偶尔发生（2‰）', '操作不当偶发'],
+      [5, '中低', '不常发生（0.5‰）', '少见的输入波动'],
+      [4, '低', '较少发生（0.1‰）', '轻微偏差'],
+      [3, '很低', '极少发生（0.01‰）', '正常过程小概率'],
+      [2, '极低', '几乎不发生（≤ 0.001‰）', '过程高度受控'],
+      [1, '几乎不可能', '无可预见的发生机理', '防错设计'],
+    ]
+  },
+  detection: {
+    title: '探测度 D · 现行控制探测失效的能力',
+    rows: [
+      [10, '几乎不可能', '无探测手段，或缺陷流出后才被发现', '无任何检验'],
+      [9, '很低', '探测效果极差，仅凭目视抽查', '抽检目视'],
+      [8, '低', '只在流出/终检时才发现', '成品抽检'],
+      [7, '较低', '抽样检验，可能漏检', '首末件检验'],
+      [6, '中等', '过程内检查，依赖操作员判断', '人工巡检'],
+      [5, '中低', '自动检测但需人工确认', '自动量具 + 人工确认'],
+      [4, '高', '自动检测可靠', '在线传感器检测'],
+      [3, '很高', '防错 + 可靠自动检测', '防错治具 + 自动检测'],
+      [2, '极高', '缺陷不可能流出（100% 防错）', '强制防错'],
+      [1, '几乎确定', '缺陷不可能产生（设计防错）', '设计防错'],
+    ]
+  }
+};
+function openScoreGuide(factor, current) {
+  const g = SCORING_GUIDES[factor];
+  if (!g) return;
+  document.getElementById('sgTitle').textContent = g.title;
+  let html = '<table class="sg-table"><thead><tr><th style="width:50px"></th><th>分值</th><th>等级</th><th>说明</th><th>示例</th></tr></thead><tbody>';
+  g.rows.forEach(r => {
+    const isCur = current > 0 && String(r[0]) === String(current);
+    html += `<tr class="${isCur ? 'cur' : ''}"><td>${isCur ? '<span class="sg-cur-tag">当前</span>' : ''}</td><td class="sg-val">${r[0]}</td><td class="sg-lv">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('sgBody').innerHTML = html;
+  document.getElementById('scoreGuideModal').style.display = 'flex';  // flex 居中显示
+}
+function closeScoreGuide() {
+  document.getElementById('scoreGuideModal').style.display = 'none';
+}
+
+// ===== History (Undo / Redo) =====
+const HISTORY_MAX = 50;
+// 注意：避免与浏览器 window.history 冲突，重命名为 flowHistory
+const flowHistory = { stack: [], redoStack: [] };
+let _suppressHistory = false;
+
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+function snapshotState() {
+  return { nodes: deepClone(nodes), edges: deepClone(edges), nextId };
+}
+
+function restoreState(snap) {
+  nodes = deepClone(snap.nodes);
+  edges = deepClone(snap.edges);
+  nextId = snap.nextId;
+  // 重绘 DOM
+  document.querySelectorAll('.flow-node').forEach(el => el.remove());
+  nodes.forEach(n => renderNode(n));
+  redrawEdges();
+  deselectAll();
+  updateStatus();
+  if (nodes.length === 0) showHint(); else hideHint();
+}
+
+function pushHistory(preSnap) {
+  if (_suppressHistory || isLocked) return;
+  flowHistory.redoStack.length = 0; // 新操作截断 redo
+  flowHistory.stack.push(preSnap ?? snapshotState());
+  if (flowHistory.stack.length > HISTORY_MAX) flowHistory.stack.shift();
+  updateHistoryUI();
+}
+
+function undo() {
+  if (isLocked || flowHistory.stack.length === 0) return;
+  const cur = snapshotState();
+  flowHistory.redoStack.push(cur);
+  const prev = flowHistory.stack.pop();
+  _suppressHistory = true;
+  restoreState(prev);
+  _suppressHistory = false;
+  updateHistoryUI();
+}
+
+function redo() {
+  if (isLocked || flowHistory.redoStack.length === 0) return;
+  const cur = snapshotState();
+  flowHistory.stack.push(cur);
+  const next = flowHistory.redoStack.pop();
+  _suppressHistory = true;
+  restoreState(next);
+  _suppressHistory = false;
+  updateHistoryUI();
+}
+
+function updateHistoryUI() {
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+  if (undoBtn) undoBtn.disabled = flowHistory.stack.length === 0 || isLocked;
+  if (redoBtn) redoBtn.disabled = flowHistory.redoStack.length === 0 || isLocked;
+}
+
+// 让 updateStatus 中能读到 flowHistory （window 挂别名兼容）
+window.__flowHistory = flowHistory;
+
+// 无限画布视图状态
+const view = { panX: 0, panY: 0, zoom: 1, mode: 'select' };
+let panState = null;
+
+function applyTransform() {
+  const canvas = document.getElementById('canvas');
+  canvas.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`;
+  document.getElementById('zoomInfo').textContent = Math.round(view.zoom * 100) + '%';
+  // 背景网格随平移缩放
+  const gridSize = 20 * view.zoom;
+  canvas.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+  canvas.style.backgroundPosition = `${view.panX}px ${view.panY}px`;
+  redrawEdges();
+}
+
+function setMode(mode) {
+  view.mode = mode;
+  const vp = document.getElementById('canvasViewport');
+  vp.classList.toggle('mode-pan', mode === 'pan');
+  document.getElementById('tbSelect').classList.toggle('active', mode === 'select');
+  document.getElementById('tbPan').classList.toggle('active', mode === 'pan');
+}
+
+// 屏幕坐标 → 画布坐标
+function screenToCanvas(sx, sy) {
+  const vp = document.getElementById('canvasViewport').getBoundingClientRect();
+  return {
+    x: (sx - vp.left - view.panX) / view.zoom,
+    y: (sy - vp.top - view.panY) / view.zoom,
+  };
+}
+
+function zoomBy(factor) {
+  const vp = document.getElementById('canvasViewport');
+  const cx = vp.clientWidth / 2;
+  const cy = vp.clientHeight / 2;
+  const newZoom = Math.max(0.2, Math.min(3, view.zoom * factor));
+  // 以视口中心为缩放原点
+  const ratio = newZoom / view.zoom;
+  view.panX = cx - (cx - view.panX) * ratio;
+  view.panY = cy - (cy - view.panY) * ratio;
+  view.zoom = newZoom;
+  applyTransform();
+}
+
+function fitToWindow() {
+  if (nodes.length === 0) { resetView(); return; }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    const ns = getNodeSize(n);
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + ns.w);
+    maxY = Math.max(maxY, n.y + ns.h);
+  }
+  const pad = 60;
+  const vp = document.getElementById('canvasViewport');
+  const contentW = maxX - minX + pad * 2;
+  const contentH = maxY - minY + pad * 2;
+  const zoomX = vp.clientWidth / contentW;
+  const zoomY = vp.clientHeight / contentH;
+  view.zoom = Math.max(0.2, Math.min(1.5, Math.min(zoomX, zoomY)));
+  view.panX = pad - minX * view.zoom + (vp.clientWidth - (maxX - minX) * view.zoom) / 2 * 0;
+  view.panY = pad - minY * view.zoom;
+  // 居中
+  view.panX = (vp.clientWidth - (maxX - minX) * view.zoom) / 2 - minX * view.zoom;
+  view.panY = (vp.clientHeight - (maxY - minY) * view.zoom) / 2 - minY * view.zoom;
+  applyTransform();
+}
+
+function resetView() {
+  view.panX = 40;
+  view.panY = 40;
+  view.zoom = 1;
+  applyTransform();
+}
+
+// 滚轮缩放
+document.getElementById('canvasViewport').addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  const vp = document.getElementById('canvasViewport').getBoundingClientRect();
+  const mx = e.clientX - vp.left;
+  const my = e.clientY - vp.top;
+  const newZoom = Math.max(0.2, Math.min(3, view.zoom * factor));
+  const ratio = newZoom / view.zoom;
+  view.panX = mx - (mx - view.panX) * ratio;
+  view.panY = my - (my - view.panY) * ratio;
+  view.zoom = newZoom;
+  applyTransform();
+}, { passive: false });
+
+// 平移（拖拽空白处）
+document.getElementById('canvasViewport').addEventListener('mousedown', (e) => {
+  if (e.target.closest('.flow-node') || e.target.closest('.node-anchor') ||
+      e.target.closest('.canvas-toolbar') || e.target.closest('.edge-path') ||
+      e.target.closest('.edge-label-group') || e.target.closest('.alert-badge') ||
+      e.target.closest('.marquee')) return;
+  if (view.mode === 'pan' || e.button === 1 || e.shiftKey) {
+    e.preventDefault();
+    panState = { startX: e.clientX, startY: e.clientY, panX: view.panX, panY: view.panY };
+    document.getElementById('canvasViewport').classList.add('panning');
+    document.addEventListener('mousemove', onPanMove);
+    document.addEventListener('mouseup', onPanEnd);
+  } else {
+    deselectAll();
+  }
+});
+
+function onPanMove(e) {
+  if (!panState) return;
+  view.panX = panState.panX + (e.clientX - panState.startX);
+  view.panY = panState.panY + (e.clientY - panState.startY);
+  applyTransform();
+}
+
+function onPanEnd() {
+  panState = null;
+  document.getElementById('canvasViewport').classList.remove('panning');
+  document.removeEventListener('mousemove', onPanMove);
+  document.removeEventListener('mouseup', onPanEnd);
+}
+
+const TYPE_CONFIG = {
+  operation: { symClass: 'sym-op', symChar: '○', label: '操作', defaultName: '加工工序', color: 'var(--op-color)' },
+  inspection: { symClass: 'sym-insp', symChar: '□', label: '检验', defaultName: '质量检验', color: 'var(--insp-color)' },
+  transport: { symClass: 'sym-trans', symChar: '→', label: '运输', defaultName: '物料搬运', color: 'var(--trans-color)' },
+  delay: { symClass: 'sym-delay', symChar: 'D', label: '等待', defaultName: '暂存等待', color: 'var(--delay-color)' },
+  storage: { symClass: 'sym-store', symChar: '▽', label: '存储', defaultName: '仓库存储', color: 'var(--store-color)' },
+  start: { symClass: 'sym-start', symChar: 'S', label: '起点', defaultName: '来料', color: 'var(--start-color)' },
+  end: { symClass: 'sym-end', symChar: 'E', label: '结束', defaultName: '成品出货', color: 'var(--end-color)' },
+  decision: { symClass: 'sym-dec', symChar: '◇', label: '决策', defaultName: '合格判定', color: 'var(--dec-color)' },
+};
+
+// 把单值转为数组（兼容旧数据）
+function toArray(v) {
+  if (Array.isArray(v)) return v.map((val, i) => ({ id: 'item_' + Date.now() + '_' + i, value: val }));
+  if (v && typeof v === 'string') return [{ id: 'item_' + Date.now(), value: v }];
+  return [];
+}
+
+// ===== Palette Drag =====
+function onPaletteDragStart(e, type) { e.dataTransfer.setData('text/plain', type); }
+function onCanvasDragOver(e) { e.preventDefault(); }
+
+function onCanvasDrop(e) {
+  e.preventDefault();
+  const type = e.dataTransfer.getData('text/plain');
+  if (!type || !TYPE_CONFIG[type]) return;
+  const pt = screenToCanvas(e.clientX, e.clientY);
+  createNode(type, pt.x - 75, pt.y - 25);
+}
+
+// ===== Create Node =====
+function createNode(type, x, y, opts = {}) {
+  if (isLocked) return null;
+  pushHistory();
+  const cfg = TYPE_CONFIG[type];
+  const node = {
+    id: 'n' + (nextId++),
+    type,
+    stepNo: opts.stepNo || ('Op ' + (nodes.length + 1) * 10),
+    name: opts.name || cfg.defaultName,
+    x: x,
+    y: y,
+    equipment: opts.equipment || '',
+    processParams: toArray(opts.processParam || opts.processParams),
+    productChars: toArray(opts.productChar || opts.productChars),
+    material: opts.material || '',
+    specialChar: opts.specialChar || false,
+    balloonNo: opts.balloonNo || '',
+    pfmeaLinked: opts.pfmeaLinked || false,
+    pfmeaStep: opts.pfmeaStep || '',
+    variation: opts.variation || '',
+  };
+  nodes.push(node);
+  renderNode(node);
+  updateStatus();
+  hideHint();
+  return node;
+}
+
+function renderNode(node) {
+  const cfg = TYPE_CONFIG[node.type];
+  const el = document.createElement('div');
+  el.className = 'flow-node';
+  el.id = node.id;
+  el.style.left = node.x + 'px';
+  el.style.top = node.y + 'px';
+  el.style.borderColor = cfg.color;
+
+  const pcCount = node.productChars.length;
+  const ppCount = node.processParams.length;
+
+  el.innerHTML = `
+    <div class="node-anchor anchor-top" data-nodeid="${node.id}" data-side="top"></div>
+    <div class="node-header">
+      <div class="node-id" contenteditable="true" spellcheck="false">${node.stepNo}</div>
+      <div class="sym ${cfg.symClass} node-symbol">${node.type === 'storage' ? '' : cfg.symChar}</div>
+    </div>
+    <div class="node-name" contenteditable="true" spellcheck="false">${node.name}</div>
+    <div class="node-meta">
+      ${node.specialChar ? '<span class="node-sc">SC</span>' : ''}
+      ${node.equipment ? `<span class="node-equip"><span class="material-symbols-outlined" style="font-size:12px">precision_manufacturing</span>${node.equipment}</span>` : ''}
+      ${pcCount > 1 ? `<span title="${pcCount}个产品特性">PC×${pcCount}</span>` : ''}
+      ${ppCount > 1 ? `<span title="${ppCount}个过程参数">PP×${ppCount}</span>` : ''}
+    </div>
+    <div class="node-pfmea-tag" data-nodeid="${node.id}" title="点击进入 FMEA 设计"><span class="material-symbols-outlined">arrow_forward</span>PFMEA</div>
+    <div class="node-anchor anchor-bottom" data-nodeid="${node.id}" data-side="bottom"></div>
+  `;
+
+  el.addEventListener('mousedown', (e) => {
+    // 点击放大特效（pop）
+    el.classList.remove('click-pop');
+    void el.offsetWidth;
+    el.classList.add('click-pop');
+    if (e.target.classList.contains('node-id') || e.target.classList.contains('node-name')) return;
+    if (e.target.classList.contains('node-anchor')) return;
+    if (e.target.classList.contains('node-pfmea-tag')) return;
+    selectNode(node.id);
+    startDragNode(e, node.id);
+  });
+
+  // FMEA 模式：双击卡片进入思维导图设计
+  el.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    if (currentWorkflowMode === 'pfmea') openFmeaMindMap(node.id);
+  });
+
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    selectNode(node.id);
+    showCtxMenu(e.clientX, e.clientY, node.id);
+  });
+
+  const idEl = el.querySelector('.node-id');
+  idEl.addEventListener('blur', () => {
+    const oldVal = node.stepNo;
+    const newVal = idEl.textContent.trim() || node.stepNo;
+    if (newVal !== oldVal) {
+      pushHistory();
+      node.stepNo = newVal;
+      idEl.textContent = node.stepNo;
+      updateStatus();
+      if (selectedId === node.id) renderProps();
+    } else {
+      idEl.textContent = node.stepNo;
+    }
+  });
+  idEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); idEl.blur(); } });
+
+  const nameEl = el.querySelector('.node-name');
+  nameEl.addEventListener('blur', () => {
+    const oldVal = node.name;
+    const newVal = nameEl.textContent.trim() || node.name;
+    if (newVal !== oldVal) {
+      pushHistory();
+      node.name = newVal;
+      nameEl.textContent = node.name;
+      if (selectedId === node.id) renderProps();
+    } else {
+      nameEl.textContent = node.name;
+    }
+  });
+  nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } });
+
+  const anchorBottom = el.querySelector('.anchor-bottom');
+  anchorBottom.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    if (isLocked) return;
+    // 解除所有原出边（一对多的全部删除），再进入新连接模式
+    const before = edges.length;
+    const hadAny = edges.some(x => x.from === node.id);
+    if (hadAny) pushHistory(); // 记录删除前快照（原子步：删除旧出边）
+    edges = edges.filter(x => x.from !== node.id);
+    if (edges.length !== before) {
+      redrawEdges();
+    } else {
+      updateHistoryUI();
+    }
+    startConnect(node.id);
+  });
+  const anchorTop = el.querySelector('.anchor-top');
+  anchorTop.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    if (isLocked) return;
+    if (connectingFrom && connectingFrom !== node.id) {
+      pushHistory(); // 复合操作开始前的快照（删除旧入边 + 新增连线 算一步）
+      _suppressHistory = true;
+      // 解除所有原入边（一对多的全部删除），再新增
+      edges = edges.filter(x => x.to !== node.id);
+      addEdge(connectingFrom, node.id); // addEdge 内部 pushHistory 被 suppress
+      cancelConnect();
+      redrawEdges();
+      _suppressHistory = false;
+    }
+  });
+
+  // PFMEA 标签：单击直接进入 FMEA 思维导图设计
+  const pfmeaTag = el.querySelector('.node-pfmea-tag');
+  if (pfmeaTag) {
+    pfmeaTag.addEventListener('mousedown', (e) => e.stopPropagation());
+    pfmeaTag.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentWorkflowMode === 'pfmea') openFmeaMindMap(node.id);
+    });
+  }
+
+  document.getElementById('canvas').appendChild(el);
+}
+
+// ===== Drag Node =====
+function startDragNode(e, nodeId) {
+  if (isLocked) return;
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  const pt = screenToCanvas(e.clientX, e.clientY);
+  dragState = {
+    nodeId,
+    offsetX: pt.x - node.x,
+    offsetY: pt.y - node.y,
+    startX: node.x,
+    startY: node.y,
+    preSnap: snapshotState()
+  };
+  document.getElementById(nodeId).classList.add('dragging');
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+}
+
+const NODE_MARGIN = 12;  // 节点间最小间距
+
+function getNodeSize(node) {
+  const el = document.getElementById(node.id);
+  if (el) return { w: el.offsetWidth, h: el.offsetHeight };
+  return { w: 150, h: 70 };
+}
+
+const CANVAS_BOTTOM_PAD = 300; // 底部预留空间，节点接近时自动扩展
+
+function ensureCanvasHeight() {
+  const canvas = document.getElementById('canvas');
+  let maxBottom = 600; // 最小高度
+  for (const n of nodes) {
+    const ns = getNodeSize(n);
+    const bottom = n.y + ns.h + CANVAS_BOTTOM_PAD;
+    if (bottom > maxBottom) maxBottom = bottom;
+  }
+  if (canvas.offsetHeight < maxBottom) {
+    canvas.style.height = maxBottom + 'px';
+  }
+}
+
+function isOverlapping(testNode, nx, ny) {
+  const ns = getNodeSize(testNode);
+  for (const other of nodes) {
+    if (other.id === testNode.id) continue;
+    const os = getNodeSize(other);
+    const overlap = nx < other.x + os.w + NODE_MARGIN &&
+                    nx + ns.w + NODE_MARGIN > other.x &&
+                    ny < other.y + os.h + NODE_MARGIN &&
+                    ny + ns.h + NODE_MARGIN > other.y;
+    if (overlap) return true;
+  }
+  return false;
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  const node = nodes.find(n => n.id === dragState.nodeId);
+  if (!node) return;
+  const pt = screenToCanvas(e.clientX, e.clientY);
+  let x = pt.x - dragState.offsetX;
+  let y = pt.y - dragState.offsetY;
+  // 无限画布：不限制任何方向
+  // 防叠加检测
+  const el = document.getElementById(node.id);
+  if (isOverlapping(node, x, y)) {
+    el.classList.add('overlapping');
+    return;
+  }
+  el.classList.remove('overlapping');
+  node.x = x;
+  node.y = y;
+  el.style.left = node.x + 'px';
+  el.style.top = node.y + 'px';
+  redrawEdges();
+}
+
+function onDragEnd() {
+  if (dragState) {
+    const el = document.getElementById(dragState.nodeId);
+    if (el) { el.classList.remove('dragging'); el.classList.remove('overlapping'); }
+    const node = nodes.find(n => n.id === dragState.nodeId);
+    if (node && (Math.abs(node.x - dragState.startX) > 0.5 || Math.abs(node.y - dragState.startY) > 0.5)) {
+      pushHistory(dragState.preSnap);
+    }
+  }
+  dragState = null;
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+  // 拖拽结束后级联校正所有连线间距
+  enforceAllEdgeGaps();
+}
+
+// ===== Select Node =====
+function selectNode(id) {
+  selectedId = id;
+  document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected', 'pfmea-active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('selected');
+  // FMEA 模式：单击突出显示当前卡片，并提示双击进入设计
+  if (currentWorkflowMode === 'pfmea') {
+    if (el) el.classList.add('pfmea-active');
+    showPfmeaHint(id);
+  }
+  renderProps();
+}
+
+function deselectAll() {
+  selectedId = null;
+  document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
+  renderProps();
+}
+
+// ===== Connect / Edges =====
+function startConnect(nodeId) {
+  connectingFrom = nodeId;
+  const el = document.getElementById(nodeId);
+  if (el) el.classList.add('connecting-from');
+  document.addEventListener('mousemove', onConnectMove);
+  document.addEventListener('mousedown', onConnectClick, { once: true });
+}
+
+function onConnectMove(e) {
+  if (!connectingFrom) return;
+  const svg = document.getElementById('edges-svg');
+  let tempPath = svg.querySelector('.edge-temp');
+  if (!tempPath) { tempPath = document.createElementNS('http://www.w3.org/2000/svg', 'path'); tempPath.classList.add('edge-temp'); svg.appendChild(tempPath); }
+  const fromNode = nodes.find(n => n.id === connectingFrom);
+  const fromEl = document.getElementById(connectingFrom);
+  if (!fromNode || !fromEl) return;
+  const x1 = fromNode.x + fromEl.offsetWidth / 2;
+  const y1 = fromNode.y + fromEl.offsetHeight;
+  const pt = screenToCanvas(e.clientX, e.clientY);
+  tempPath.setAttribute('d', bezierPathV(x1, y1, pt.x, pt.y));
+}
+
+function onConnectClick(e) {
+  document.removeEventListener('mousemove', onConnectMove);
+  const tempPath = document.querySelector('.edge-temp');
+  if (tempPath) tempPath.remove();
+  if (connectingFrom) { const el = document.getElementById(connectingFrom); if (el) el.classList.remove('connecting-from'); }
+  const target = e.target.closest('.flow-node');
+  if (target && target.id !== connectingFrom) addEdge(connectingFrom, target.id);
+  connectingFrom = null;
+}
+
+function cancelConnect() {
+  connectingFrom = null;
+  document.removeEventListener('mousemove', onConnectMove);
+  const tempPath = document.querySelector('.edge-temp');
+  if (tempPath) tempPath.remove();
+}
+
+function addEdge(fromId, toId) {
+  if (isLocked) return;
+  if (fromId === toId) return;
+  if (edges.some(e => e.from === fromId && e.to === toId)) return;
+  pushHistory();
+  const fromNode = nodes.find(n => n.id === fromId);
+  const toNode = nodes.find(n => n.id === toId);
+  if (fromNode && toNode) {
+    const fromEl = document.getElementById(fromId);
+    const toEl = document.getElementById(toId);
+    if (fromEl && toEl) {
+      const fromBottom = fromNode.y + fromEl.offsetHeight;
+      const toTop = toNode.y;
+      const gap = toTop - fromBottom;
+      // 间距不够时，级联向下推所有后续连接的节点
+      if (gap < MIN_EDGE_LEN) {
+        const delta = MIN_EDGE_LEN - gap;
+        cascadePushDown(toNode, delta);
+      }
+    }
+  }
+  edges.push({ from: fromId, to: toId, dashed: false, label: '' });
+  redrawEdges();
+  updateStatus();
+}
+
+// 级联下移节点及其所有后续连接的节点，避免卡片挤压遮挡连线
+function cascadePushDown(startNode, delta) {
+  if (delta <= 0) return;
+  const visited = new Set();
+  const stack = [startNode];
+  while (stack.length) {
+    const cur = stack.pop();
+    if (visited.has(cur.id)) continue;
+    visited.add(cur.id);
+    cur.y += delta;
+    const el = document.getElementById(cur.id);
+    if (el) el.style.top = cur.y + 'px';
+    // 将所有以当前节点为 from 的 edge 的 to 节点也入栈（同一"支流"）
+    for (const e of edges) {
+      if (e.from === cur.id) {
+        const toNode = nodes.find(n => n.id === e.to);
+        if (toNode && !visited.has(toNode.id)) stack.push(toNode);
+      }
+    }
+  }
+}
+
+// 拖拽结束后：确保所有存在 edge 连接的节点对都满足最小间距约束
+function enforceAllEdgeGaps() {
+  let changed = true;
+  let iterations = 0;
+  while (changed && iterations < 8) {
+    changed = false;
+    iterations++;
+    for (const e of edges) {
+      const fromNode = nodes.find(n => n.id === e.from);
+      const toNode = nodes.find(n => n.id === e.to);
+      if (!fromNode || !toNode) continue;
+      const fromEl = document.getElementById(e.from);
+      const toEl = document.getElementById(e.to);
+      if (!fromEl || !toEl) continue;
+      const gap = toNode.y - (fromNode.y + fromEl.offsetHeight);
+      if (gap < MIN_EDGE_LEN) {
+        cascadePushDown(toNode, MIN_EDGE_LEN - gap);
+        changed = true;
+      }
+    }
+  }
+  redrawEdges();
+}
+
+// 箭头几何参数（与 marker 定义一致：markerWidth=10, refX=9）
+const ARROW_LEN = 9;
+const MIN_VISIBLE_EDGE = ARROW_LEN * 3;   // 连线显示长度 ≥ 箭头 3 倍
+const ARROW_STRAIGHT_LEN = ARROW_LEN * 1; // 箭头尾部直线段 ≥ 箭头 1 倍，且强制垂直
+const MIN_EDGE_LEN = 110;                 // 节点间最小垂直间距（与整理视图的等长线段一致）
+
+function bezierPathV(x1, y1, x2, y2) {
+  // 起点：上节点底部 (x1,y1)，终点：下节点顶部 (x2,y2)
+  // 末尾至少 ARROW_STRAIGHT_LEN 是纯垂直直线，接到箭头；显示总长不能短于 MIN_VISIBLE_EDGE
+  const yStraightStart = y2 - ARROW_STRAIGHT_LEN; // 箭头尾部直线段起点
+  const curveStartY = y1;
+  const curveEndY = yStraightStart;
+  const curveDist = curveEndY - curveStartY;
+
+  if (curveDist < 2) {
+    // 极近距离：退化为纯垂直线
+    return `M ${x1} ${y1} L ${x2} ${y2}`;
+  }
+
+  // 控制点：从起点向下伸出，中段平滑折弯，再从上方垂直落入直线段
+  const dy1 = Math.max(8, curveDist * 0.42);
+  const dy2 = Math.max(8, curveDist * 0.42);
+  return `M ${x1} ${y1} C ${x1} ${y1 + dy1}, ${x2} ${yStraightStart - dy2}, ${x2} ${yStraightStart} L ${x2} ${y2}`;
+}
+
+function redrawEdges() {
+  const svg = document.getElementById('edges-svg');
+  svg.querySelectorAll('.edge-path, .edge-flow, .edge-flow-glow, .edge-flow-spark, .edge-label-group').forEach(el => el.remove());
+  document.querySelectorAll('.edge-label-foreign').forEach(el => el.remove());
+
+  edges.forEach((edge, idx) => {
+    const fromNode = nodes.find(n => n.id === edge.from);
+    const toNode = nodes.find(n => n.id === edge.to);
+    if (!fromNode || !toNode) return;
+    const fromEl = document.getElementById(edge.from);
+    const toEl = document.getElementById(edge.to);
+    if (!fromEl || !toEl) return;
+    // 使用节点坐标（画布空间）直接计算，不受 transform 影响
+    const fromW = fromEl.offsetWidth, fromH = fromEl.offsetHeight;
+    const toW = toEl.offsetWidth;
+    const x1 = fromNode.x + fromW / 2;
+    const y1 = fromNode.y + fromH;
+    const x2 = toNode.x + toW / 2;
+    const y2 = toNode.y;
+    const d = bezierPathV(x1, y1, x2, y2);
+
+    // ===== 底层：暖色宽光晕流动 =====
+    const glow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    glow.setAttribute('d', d);
+    glow.setAttribute('class', 'edge-flow-glow');
+    glow.style.animationDelay = (idx * 0.23 % 1.4).toFixed(2) + 's';
+    svg.appendChild(glow);
+
+    // ===== 中层：主品牌色分段流动 =====
+    const flow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    flow.setAttribute('d', d);
+    flow.setAttribute('class', 'edge-flow');
+    flow.style.animationDelay = (idx * 0.13 % 1.1).toFixed(2) + 's';
+    svg.appendChild(flow);
+
+    // ===== 顶层：白色高速脉冲细光点 =====
+    const spark = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    spark.setAttribute('d', d);
+    spark.setAttribute('class', 'edge-flow-spark');
+    spark.style.animationDelay = (idx * 0.31 % 0.72).toFixed(3) + 's';
+    svg.appendChild(spark);
+
+    // 基础连线（带箭头，在流动层上方才能点击）
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', 'edge-path' + (edge.dashed ? ' dashed' : '') + (selectedEdge === idx ? ' selected' : ''));
+    path.setAttribute('marker-end', 'url(#arrowhead)');
+    path.style.pointerEvents = 'stroke';
+    path.addEventListener('click', (e) => { e.stopPropagation(); selectEdge(idx); });
+    path.addEventListener('dblclick', (e) => { e.stopPropagation(); e.preventDefault(); editEdgeLabel(idx, (x1 + x2) / 2, (y1 + y2) / 2); });
+    svg.appendChild(path);
+
+    if (edge.label) {
+      const mx = (x1 + x2) / 2;
+      const my = (y1 + y2) / 2;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.classList.add('edge-label-group');
+      g.style.cursor = 'text';
+      g.style.pointerEvents = 'all';
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', mx - edge.label.length * 4 - 4);
+      rect.setAttribute('y', my - 10);
+      rect.setAttribute('width', edge.label.length * 8 + 8);
+      rect.setAttribute('height', 20);
+      rect.setAttribute('rx', 6);
+      rect.setAttribute('class', 'edge-label');
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', mx);
+      text.setAttribute('y', my);
+      text.setAttribute('class', 'edge-label-text');
+      text.textContent = edge.label;
+      g.appendChild(rect);
+      g.appendChild(text);
+      g.addEventListener('dblclick', (e) => { e.stopPropagation(); e.preventDefault(); editEdgeLabel(idx, mx, my); });
+      svg.appendChild(g);
+    }
+  });
+}
+
+function editEdgeLabel(edgeIdx, mx, my) {
+  if (isLocked) return;
+  const edge = edges[edgeIdx];
+  if (!edge) return;
+  const canvas = document.getElementById('canvas');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'edge-label-foreign';
+  wrapper.style.left = mx + 'px';
+  wrapper.style.top = my + 'px';
+  const input = document.createElement('input');
+  input.className = 'edge-label-input';
+  input.value = edge.label || '';
+  input.placeholder = '连线说明';
+  input.style.width = '120px';
+  wrapper.appendChild(input);
+  canvas.appendChild(wrapper);
+  input.focus();
+  input.select();
+  const finish = () => {
+    const newLabel = input.value.trim();
+    const changed = (edge.label || '') !== newLabel;
+    if (changed) pushHistory();
+    edge.label = newLabel;
+    wrapper.remove();
+    redrawEdges();
+  };
+  input.addEventListener('blur', finish);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { wrapper.remove(); } });
+}
+
+// ===== Multi-field helpers =====
+function addMultiItem(nodeId, key) {
+  if (isLocked) return;
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  pushHistory();
+  node[key].push({ id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), value: '' });
+  renderProps();
+}
+
+function updateMultiItem(nodeId, key, itemId, val) {
+  if (isLocked) return;
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  const item = node[key].find(i => i.id === itemId);
+  if (item && item.value !== val) {
+    pushHistory();
+    item.value = val;
+  }
+}
+
+function delMultiItem(nodeId, key, itemId) {
+  if (isLocked) return;
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return;
+  const before = node[key].length;
+  const filtered = node[key].filter(i => i.id !== itemId);
+  if (filtered.length !== before) {
+    pushHistory();
+    node[key] = filtered;
+    renderProps();
+  }
+}
+
+function renderMultiField(nodeId, key, label, placeholder) {
+  const node = nodes.find(n => n.id === nodeId);
+  if (!node) return '';
+  const items = node[key];
+  let html = `<div class="prop-field"><label>${label}</label><div class="multi-field">`;
+  items.forEach(item => {
+    html += `<div class="multi-row">
+      <input type="text" value="${item.value}" placeholder="${placeholder}" onchange="updateMultiItem('${nodeId}','${key}','${item.id}',this.value)">
+      <button class="multi-del" onclick="delMultiItem('${nodeId}','${key}','${item.id}')" title="删除"><span class="material-symbols-outlined" style="font-size:16px">close</span></button>
+    </div>`;
+  });
+  html += `<button class="multi-add" onclick="addMultiItem('${nodeId}','${key}')"><span class="material-symbols-outlined" style="font-size:16px">add</span>添加${label}</button>`;
+  html += `</div></div>`;
+  return html;
+}
+
+// ===== Properties Panel =====
+function renderProps() {
+  const panel = document.getElementById('rightPanel');
+  if (!selectedId) {
+    panel.innerHTML = `<div class="prop-empty"><span class="material-symbols-outlined">pan_tool</span><p>${isLocked ? '选中一个节点查看 PFMEA 设定' : '选中一个节点查看和编辑属性'}</p></div>`;
+    return;
+  }
+  const node = nodes.find(n => n.id === selectedId);
+  if (!node) return;
+  // 锁定模式 或 PFMEA 工作模式：显示 PFMEA 设定内容
+  if (isLocked || currentWorkflowMode === 'pfmea') { renderPfmeaPanel(node); return; }
+  panel.innerHTML = `
+    <div class="prop-group">
+      <div class="prop-group-title">基本信息</div>
+      <div class="prop-field">
+        <label>工步编号 (Step No.)</label>
+        <input type="text" value="${node.stepNo}" onchange="updateProp('stepNo', this.value)">
+      </div>
+      <div class="prop-field">
+        <label>工步名称 (Step Name)</label>
+        <input type="text" value="${node.name}" onchange="updateProp('name', this.value)">
+      </div>
+      <div class="prop-field">
+        <label>节点类型</label>
+        <select onchange="changeType('${node.id}', this.value)">
+          ${Object.entries(TYPE_CONFIG).map(([k, v]) => `<option value="${k}" ${k === node.type ? 'selected' : ''}>${v.symChar} ${v.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="prop-group">
+      <div class="prop-group-title">功能与特性</div>
+      ${renderMultiField(node.id, 'productChars', '产品特性 (Product Characteristic)', '如: Ø25±0.02')}
+      ${renderMultiField(node.id, 'processParams', '过程参数 (Process Parameter)', '如: 转速3000rpm')}
+      <div class="prop-field">
+        <label>输入材料 (Material Input)</label>
+        <input type="text" value="${node.material}" placeholder="如: 铝合金毛坯" onchange="updateProp('material', this.value)">
+      </div>
+      <div class="prop-field">
+        <label>变异源 (Incoming Variation)</label>
+        <textarea rows="2" placeholder="如: 毛坯尺寸波动" onchange="updateProp('variation', this.value)">${node.variation}</textarea>
+      </div>
+    </div>
+    <div class="prop-group">
+      <div class="prop-group-title">资源关联</div>
+      <div class="prop-field">
+        <label>设备/工装/夹具</label>
+        <input type="text" value="${node.equipment}" placeholder="如: VMC-04 / Fixture F-19" onchange="updateProp('equipment', this.value)">
+      </div>
+    </div>
+    <div class="prop-group">
+      <div class="prop-group-title">特殊特性与风险</div>
+      <div class="prop-field">
+        <label>特性分类</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${node.specialChar
+            ? `<button class="badge-sc" onclick="toggleSC('${node.id}')">SC (安全/关键) — 点击取消</button>`
+            : `<button class="badge-nosc" onclick="toggleSC('${node.id}')">普通特性 — 点击标记SC</button>`}
+        </div>
+      </div>
+      <div class="prop-field">
+        <label>特性编号 (Balloon No.)</label>
+        <input type="text" value="${node.balloonNo}" placeholder="如图纸气球编号 14" onchange="updateProp('balloonNo', this.value)" ${node.specialChar ? '' : 'disabled'}>
+      </div>
+    </div>
+  `;
+}
+
+// ===== PFMEA 设定面板 (锁定模式下显示) =====
+function rpnLevel(rpn) {
+  if (rpn >= 100) return 'high';
+  if (rpn >= 40) return 'mid';
+  return 'low';
+}
+
+// 右侧 PFMEA 面板：列表式字段编辑器（失效后果/原因/控制/措施，支持多条）
+function fmListEditorHtml(fm, listKey, label, placeholder) {
+  const items = fm[listKey] || [];
+  let html = `<div class="fm-list-editor">`;
+  items.forEach(it => {
+    html += `
+      <div class="fm-item-row">
+        <textarea rows="2" placeholder="${placeholder}" oninput="updateFMItem('${fm.id}','${listKey}','${it.id}',this.value)">${esc(it.text)}</textarea>
+        <button class="multi-del" onclick="delFMItem('${fm.id}','${listKey}','${it.id}')" title="删除"><span class="material-symbols-outlined" style="font-size:14px">close</span></button>
+      </div>`;
+  });
+  html += `<button class="multi-add" onclick="addFMItem('${fm.id}','${listKey}')"><span class="material-symbols-outlined" style="font-size:14px">add</span>添加${label}</button>`;
+  html += `</div>`;
+  return html;
+}
+
+function renderPfmeaPanel(node) {
+  const panel = document.getElementById('rightPanel');
+  const cfg = TYPE_CONFIG[node.type] || TYPE_CONFIG.operation;
+  const fms = ensureFmData(node.id);
+
+  const fmCards = fms.map((fm, i) => {
+    const rpn = (fm.severity || 0) * (fm.occurrence || 0) * (fm.detection || 0);
+    const lvl = rpnLevel(rpn);
+    const rpnCls = rpn === 0 ? 'zero' : lvl;
+    const title = fm.mode ? fm.mode : '（未命名失效模式）';
+    const collapsed = fm._collapsed ? 'collapsed' : '';
+    return `
+      <div class="fm-card rpn-${lvl} ${collapsed}" data-fm-id="${fm.id}">
+        <div class="fm-card-head" onclick="toggleFmCard('${fm.id}')">
+          <div class="fm-card-toggle"><span class="material-symbols-outlined">expand_more</span></div>
+          <div class="fm-card-title ${fm.mode ? '' : 'empty'}">${esc(title)}</div>
+          <div class="fm-rpn-badge ${rpnCls}">RPN ${rpn} · ${riskLevelName(rpn)}</div>
+        </div>
+        <div class="fm-card-body">
+          <div class="fm-row">
+            <div class="fm-label">失效模式</div>
+            <div class="fm-input"><input type="text" value="${esc(fm.mode)}" placeholder="如：叠厚超差" oninput="updateFM('${fm.id}','mode',this.value)"></div>
+          </div>
+          <div class="fm-row">
+            <div class="fm-label">失效后果</div>
+            <div class="fm-input">${fmListEditorHtml(fm, 'effects', '失效后果', '如：电机性能下降')}</div>
+            <div class="fm-score">
+              <div class="fm-score-title">S <b class="mm-q" onclick="openScoreGuide('severity',${fm.severity || 0})" title="查看严重度打分标准">?</b></div>
+              <input type="number" min="1" max="10" value="${fm.severity || ''}" placeholder="1-10" oninput="updateFM('${fm.id}','severity',parseInt(this.value)||0)">
+              <div class="fm-score-bar"><div class="fm-score-fill s-fill" style="width:${(fm.severity||0)*10}%"></div></div>
+            </div>
+          </div>
+          <div class="fm-row">
+            <div class="fm-label">失效原因</div>
+            <div class="fm-input">${fmListEditorHtml(fm, 'causes', '失效原因', '如：压力不足')}</div>
+            <div class="fm-score">
+              <div class="fm-score-title">O <b class="mm-q" onclick="openScoreGuide('occurrence',${fm.occurrence || 0})" title="查看频度打分标准">?</b></div>
+              <input type="number" min="1" max="10" value="${fm.occurrence || ''}" placeholder="1-10" oninput="updateFM('${fm.id}','occurrence',parseInt(this.value)||0)">
+              <div class="fm-score-bar"><div class="fm-score-fill o-fill" style="width:${(fm.occurrence||0)*10}%"></div></div>
+            </div>
+          </div>
+          <div class="fm-row">
+            <div class="fm-label">现行控制</div>
+            <div class="fm-input">${fmListEditorHtml(fm, 'controls', '现行控制', '如：首件检验')}</div>
+            <div class="fm-score">
+              <div class="fm-score-title">D <b class="mm-q" onclick="openScoreGuide('detection',${fm.detection || 0})" title="查看探测度打分标准">?</b></div>
+              <input type="number" min="1" max="10" value="${fm.detection || ''}" placeholder="1-10" oninput="updateFM('${fm.id}','detection',parseInt(this.value)||0)">
+              <div class="fm-score-bar"><div class="fm-score-fill d-fill" style="width:${(fm.detection||0)*10}%"></div></div>
+            </div>
+          </div>
+          <div class="fm-row">
+            <div class="fm-label">建议措施</div>
+            <div class="fm-input">${fmListEditorHtml(fm, 'actions', '建议措施', '如：增加压力传感器闭环控制')}</div>
+          </div>
+          <div class="fm-card-foot">
+            <span style="font-size:11px;color:var(--text-tertiary)">RPN = S × O × D = ${fm.severity||0} × ${fm.occurrence||0} × ${fm.detection||0}</span>
+            <button class="fm-del-btn" onclick="delFM('${fm.id}')"><span class="material-symbols-outlined">delete</span>删除</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="pfmea-section">
+      <div class="pfmea-section-title">PFMEA 过程失效模式分析</div>
+      <div class="pfmea-node-info">
+        <div class="sym ${cfg.symClass}">${node.type === 'storage' ? '' : cfg.symChar}</div>
+        <div class="pn-id">${node.stepNo}</div>
+        <div class="pn-name">${node.name}</div>
+        <div class="pn-type">${cfg.label}</div>
+      </div>
+    </div>
+    <div class="pfmea-section">
+      <div class="pfmea-section-title">失效模式 (${fms.length})</div>
+      <div class="fm-list">
+        ${fmCards}
+      </div>
+      <button class="fm-add-btn" onclick="addFM()"><span class="material-symbols-outlined">add</span>添加失效模式</button>
+    </div>
+    <div class="pfmea-save-row">
+      <button class="topbar-btn" onclick="exportFmeaCsv()" title="导出 FMEA 为 CSV"><span class="material-symbols-outlined" style="font-size:18px">download</span>导出 CSV</button>
+      <button class="topbar-btn primary" onclick="savePfmeaData()"><span class="material-symbols-outlined" style="font-size:18px">save</span>保存 PFMEA</button>
+    </div>
+  `;
+}
+
+function toggleFmCard(fmId) {
+  if (!selectedId || !pfmeaData[selectedId]) return;
+  const fm = pfmeaData[selectedId].find(f => f.id === fmId);
+  if (!fm) return;
+  fm._collapsed = !fm._collapsed;
+  const card = document.querySelector(`.fm-card[data-fm-id="${fmId}"]`);
+  if (card) card.classList.toggle('collapsed');
+}
+
+function addFM(preset) {
+  const targetId = mmOpen ? mmNodeId : selectedId;
+  if (!targetId) return;
+  if (!pfmeaData[targetId]) pfmeaData[targetId] = [];
+  pfmeaData[targetId].push({
+    id: mkId('fm'),
+    mode: (preset && preset.mode) || '',
+    effects: [], severity: (preset && preset.severity) || 0,
+    causes: [], occurrence: (preset && preset.occurrence) || 0,
+    controls: [], detection: (preset && preset.detection) || 0,
+    actions: []
+  });
+  refreshPfmeaViews();
+}
+
+// 右侧 PFMEA 面板：列表字段（失效后果/失效原因/现行控制/建议措施）增删改
+function addFMItem(fmId, listKey) {
+  const fm = ensureFmData(selectedId).find(f => f.id === fmId);
+  if (!fm) return;
+  fm[listKey].push({ id: mkId('it'), text: '' });
+  renderProps();
+}
+function delFMItem(fmId, listKey, itemId) {
+  const fm = ensureFmData(selectedId).find(f => f.id === fmId);
+  if (!fm) return;
+  fm[listKey] = fm[listKey].filter(i => i.id !== itemId);
+  renderProps();
+}
+function updateFMItem(fmId, listKey, itemId, val) {
+  const fm = ensureFmData(selectedId).find(f => f.id === fmId);
+  if (!fm) return;
+  const item = fm[listKey].find(i => i.id === itemId);
+  if (item) item.text = val;
+}
+
+function delFM(fmId) {
+  if (!selectedId || !pfmeaData[selectedId]) return;
+  pfmeaData[selectedId] = pfmeaData[selectedId].filter(f => f.id !== fmId);
+  if (pfmeaData[selectedId].length === 0) delete pfmeaData[selectedId];
+  renderProps();
+}
+
+function updateFM(fmId, key, val) {
+  if (!selectedId || !pfmeaData[selectedId]) return;
+  const fm = pfmeaData[selectedId].find(f => f.id === fmId);
+  if (!fm) return;
+  if (key === 'severity' || key === 'occurrence' || key === 'detection') val = parseInt(val) || 0;
+  fm[key] = val;
+  // 实时更新 RPN 徽章和评分条
+  if (key === 'severity' || key === 'occurrence' || key === 'detection') {
+    const rpn = (fm.severity || 0) * (fm.occurrence || 0) * (fm.detection || 0);
+    const card = document.querySelector(`.fm-card[data-fm-id="${fmId}"]`);
+    if (card) {
+      const badge = card.querySelector('.fm-rpn-badge');
+      if (badge) {
+        badge.textContent = 'RPN ' + rpn;
+        badge.className = 'fm-rpn-badge ' + (rpn === 0 ? 'zero' : rpnLevel(rpn));
+      }
+      card.className = 'fm-card rpn-' + rpnLevel(rpn) + (fm._collapsed ? ' collapsed' : '');
+      const fillCls = key === 'severity' ? 's-fill' : key === 'occurrence' ? 'o-fill' : 'd-fill';
+      const fill = card.querySelector('.fm-score-fill.' + fillCls);
+      if (fill) fill.style.width = (val * 10) + '%';
+      const foot = card.querySelector('.fm-card-foot span');
+      if (foot) foot.textContent = `RPN = S × O × D = ${fm.severity||0} × ${fm.occurrence||0} × ${fm.detection||0}`;
+    }
+  }
+}
+
+function loadPfmeaData() {
+  const partNo = document.getElementById('partSelect').value;
+  if (!partNo) { pfmeaData = {}; return; }
+  try {
+    const raw = localStorage.getItem('pfmea_' + partNo);
+    pfmeaData = raw ? JSON.parse(raw) : {};
+  } catch (e) { pfmeaData = {}; }
+  // 兼容迁移：旧数据单值字段 → 列表
+  Object.keys(pfmeaData).forEach(k => {
+    if (Array.isArray(pfmeaData[k])) pfmeaData[k].forEach(normalizeFM);
+  });
+}
+
+function savePfmeaData() {
+  const partNo = document.getElementById('partSelect').value;
+  if (!partNo) return;
+  try {
+    // 清除 _collapsed 临时字段后保存
+    const clean = {};
+    Object.keys(pfmeaData).forEach(k => {
+      clean[k] = pfmeaData[k].map(({ _collapsed, ...rest }) => rest);
+    });
+    localStorage.setItem('pfmea_' + partNo, JSON.stringify(clean));
+  } catch (e) { alert('保存 PFMEA 失败: ' + e.message); }
+}
+
+// 导出 FMEA 为 CSV（每个失效模式一行，多值字段用"；"合并）
+function exportFmeaCsv() {
+  const partNo = document.getElementById('partSelect').value || 'FMEA';
+  const rows = [];
+  const headers = ['工步编号', '工序名称', '设备', '失效模式', '失效后果', '严重度S', '失效原因', '频度O', '现行控制', '探测度D', '建议措施', 'RPN', '风险等级'];
+  rows.push(headers.join(','));
+  let count = 0;
+  nodes.forEach(n => {
+    const fms = pfmeaData[n.id];
+    if (!fms || !fms.length) return;
+    fms.forEach(normalizeFM);
+    fms.forEach(fm => {
+      const rpn = (fm.severity || 0) * (fm.occurrence || 0) * (fm.detection || 0);
+      const join = list => (list || []).map(i => i.text).filter(Boolean).join('；');
+      const row = [
+        n.stepNo, n.name, n.equipment || '',
+        fm.mode || '', join(fm.effects), fm.severity || 0,
+        join(fm.causes), fm.occurrence || 0,
+        join(fm.controls), fm.detection || 0,
+        join(fm.actions), rpn, riskLevelName(rpn)
+      ];
+      rows.push(row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+      count++;
+    });
+  });
+  if (count === 0) {
+    alert('当前没有可导出的失效模式数据，请先添加失效模式。');
+    return;
+  }
+  const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `PFMEA_export_${partNo.replace(/[^\w\u4e00-\u9fa5-]/g, '')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateProp(key, val) {
+  if (isLocked) return;
+  if (!selectedId) return;
+  const node = nodes.find(n => n.id === selectedId);
+  if (!node) return;
+  if (node[key] === val) return;
+  pushHistory();
+  node[key] = val;
+  refreshNodeDOM(node);
+  updateStatus();
+}
+
+function changeType(id, type) {
+  if (isLocked) return;
+  const node = nodes.find(n => n.id === id);
+  if (!node || !TYPE_CONFIG[type]) return;
+  if (node.type === type) return;
+  pushHistory();
+  node.type = type;
+  const oldEl = document.getElementById(id);
+  if (oldEl) oldEl.remove();
+  renderNode(node);
+  selectNode(id);
+  redrawEdges();
+}
+
+function toggleSC(id) {
+  if (isLocked) return;
+  const node = nodes.find(n => n.id === id);
+  if (!node) return;
+  pushHistory();
+  node.specialChar = !node.specialChar;
+  if (!node.specialChar) node.balloonNo = '';
+  refreshNodeDOM(node);
+  renderProps();
+  updateStatus();
+}
+
+function togglePfmea(id) {
+  if (isLocked) return;
+  const node = nodes.find(n => n.id === id);
+  if (!node) return;
+  pushHistory();
+  node.pfmeaLinked = !node.pfmeaLinked;
+  node.pfmeaStep = node.pfmeaLinked ? node.stepNo : '';
+  refreshNodeDOM(node);
+  renderProps();
+  updateStatus();
+}
+
+function refreshNodeDOM(node) {
+  const oldEl = document.getElementById(node.id);
+  if (oldEl) oldEl.remove();
+  renderNode(node);
+  if (selectedId === node.id) selectNode(node.id);
+  redrawEdges();
+}
+
+// ===== Context Menu =====
+function showCtxMenu(x, y, nodeId) {
+  ctxNodeId = nodeId;
+  const menu = document.getElementById('ctxMenu');
+  menu.style.display = 'block';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+function hideCtxMenu() { document.getElementById('ctxMenu').style.display = 'none'; ctxNodeId = null; }
+
+function ctxAction(action) {
+  if (!ctxNodeId) return;
+  const node = nodes.find(n => n.id === ctxNodeId);
+  if (!node) return;
+  switch (action) {
+    case 'duplicate': createNode(node.type, node.x + 30, node.y + 40, { ...node, stepNo: 'Op ' + (nodes.length * 10) }); break;
+    case 'delete': deleteNode(node.id); break;
+    case 'renumber': const el = document.querySelector(`#${node.id} .node-id`); if (el) el.focus(); break;
+    case 'toggleSC': toggleSC(node.id); break;
+    case 'linkPfmea': togglePfmea(node.id); break;
+  }
+  hideCtxMenu();
+}
+
+
+
+// ===== Toolbar Actions =====
+// 整理视图：保证所有连接线段的垂直跨度等长
+const AUTO_EDGE_LEN = 110;
+const AUTO_COL_W = 300;
+
+function isSimpleChain() {
+  if (edges.length !== nodes.length - 1 || nodes.length < 2) return false;
+  const inD = {}, outD = {};
+  nodes.forEach(n => { inD[n.id] = 0; outD[n.id] = 0; });
+  for (const e of edges) { outD[e.from]++; inD[e.to]++; }
+  let starts = 0;
+  nodes.forEach(n => { if (inD[n.id] === 0) starts++; });
+  return starts === 1 && nodes.every(n => (inD[n.id] || 0) <= 1 && (outD[n.id] || 0) <= 1);
+}
+
+function autoLayout() {
+  if (isLocked) return;
+  pushHistory();
+  if (nodes.length === 0) return;
+
+  // 无连线：简单纵向堆叠，间距等长
+  if (edges.length === 0) {
+    let y = 40;
+    nodes.forEach(node => {
+      node.x = 60;
+      node.y = y;
+      const el = document.getElementById(node.id);
+      const h = el ? el.offsetHeight : 70;
+      y += h + AUTO_EDGE_LEN;
+    });
+    if (nodes.length > 1) {
+      for (let i = 0; i < nodes.length - 1; i++) edges.push({ from: nodes[i].id, to: nodes[i + 1].id, dashed: false, label: '' });
+    }
+    nodes.forEach(n => { const el = document.getElementById(n.id); if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; } });
+    redrawEdges();
+    updateStatus();
+    return;
+  }
+
+  // 纯链式流程：单列等长排列（线段等长）
+  if (isSimpleChain()) {
+    // 按拓扑顺序重排
+    const ordered = [];
+    const inD = {}; nodes.forEach(n => inD[n.id] = 0);
+    for (const e of edges) inD[e.to]++;
+    const startNode = nodes.find(n => inD[n.id] === 0) || nodes[0];
+    const seen = new Set();
+    let cur = startNode;
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      ordered.push(cur);
+      const nxt = edges.find(e => e.from === cur.id);
+      cur = nxt ? nodes.find(n => n.id === nxt.to) : null;
+    }
+    let y = 40;
+    ordered.forEach(n => {
+      n.x = 60;
+      n.y = y;
+      const el = document.getElementById(n.id);
+      const h = el ? el.offsetHeight : 70;
+      y += h + AUTO_EDGE_LEN;
+    });
+  } else {
+    // 分支流程：分层布局，每条边垂直跨度等长
+    const depth = {};
+    nodes.forEach(n => depth[n.id] = 0);
+    let changed = true, guard = 0;
+    while (changed && guard++ < 200) {
+      changed = false;
+      for (const e of edges) {
+        if (depth[e.to] < depth[e.from] + 1) { depth[e.to] = depth[e.from] + 1; changed = true; }
+      }
+    }
+    const byDepth = {};
+    nodes.forEach(n => { (byDepth[depth[n.id]] = byDepth[depth[n.id]] || []).push(n); });
+    const maxDepth = Math.max(...nodes.map(n => depth[n.id]));
+    const top = 40, siblingGap = 20;
+    for (let d = 0; d <= maxDepth; d++) {
+      const group = byDepth[d] || [];
+      if (!group.length) continue;
+      const x = 60 + d * AUTO_COL_W;
+      group.forEach(v => {
+        v._reqY = top;
+        for (const e of edges) {
+          if (e.to === v.id) {
+            const u = nodes.find(nd => nd.id === e.from);
+            const uEl = document.getElementById(e.from);
+            const uH = uEl ? uEl.offsetHeight : 70;
+            v._reqY = Math.max(v._reqY, (u ? u.y : 0) + uH + AUTO_EDGE_LEN);
+          }
+        }
+      });
+      group.sort((a, b) => a._reqY - b._reqY);
+      let cursor = -Infinity;
+      group.forEach(v => {
+        const el = document.getElementById(v.id);
+        const h = el ? el.offsetHeight : 70;
+        v.y = Math.max(v._reqY, cursor + siblingGap);
+        v.x = x;
+        cursor = v.y + h;
+        delete v._reqY;
+      });
+    }
+  }
+
+  nodes.forEach(n => {
+    const el = document.getElementById(n.id);
+    if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
+  });
+  redrawEdges();
+  updateStatus();
+}
+
+function renumberAll() {
+  if (isLocked) return;
+  pushHistory();
+  nodes.forEach((node, i) => {
+    node.stepNo = 'Op ' + (i + 1) * 10;
+    if (node.pfmeaLinked) node.pfmeaStep = node.stepNo;
+    const el = document.getElementById(node.id);
+    if (el) { const idEl = el.querySelector('.node-id'); if (idEl) idEl.textContent = node.stepNo; }
+  });
+  if (selectedId) renderProps();
+  updateStatus();
+}
+
+function clearCanvas() {
+  if (isLocked) return;
+  if (!confirm('确定清空所有节点和连线？')) return;
+  pushHistory();
+  nodes = []; edges = [];
+  document.querySelectorAll('.flow-node').forEach(el => el.remove());
+  redrawEdges();
+  deselectAll();
+  updateStatus();
+  showHint();
+}
+
+function saveFlow() {
+  const data = { nodes, edges, partNo: document.getElementById('partSelect').value, isLocked };
+  try { localStorage.setItem('processFlow_' + data.partNo, JSON.stringify(data)); } catch (e) {}
+  const now = new Date();
+  document.getElementById('stSaved').textContent = '最后保存: ' + now.toLocaleString('zh-CN', { hour12: false });
+}
+
+function exportData() {
+  let csv = 'Step No.,Step Name,Symbol Type,Product Characteristics,Process Parameters,Material Input,Equipment,Special Char,Balloon No.,PFMEA Linked,PFMEA Step,Variation\n';
+  nodes.forEach(n => {
+    const cfg = TYPE_CONFIG[n.type];
+    const pc = n.productChars.map(i => i.value).filter(Boolean).join('; ');
+    const pp = n.processParams.map(i => i.value).filter(Boolean).join('; ');
+    csv += [n.stepNo, n.name, cfg.label, pc, pp, n.material, n.equipment,
+      n.specialChar ? 'SC' : '', n.balloonNo, n.pfmeaLinked ? 'Yes' : 'No', n.pfmeaStep, n.variation]
+      .map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(',') + '\n';
+  });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'process_flow_export.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ===== Status =====
+function updateStatus() {
+  document.getElementById('stNodes').textContent = nodes.length;
+  document.getElementById('stEdges').textContent = edges.length;
+  document.getElementById('stSC').textContent = nodes.filter(n => n.specialChar).length;
+  const total = (typeof flowHistory !== 'undefined' && flowHistory && flowHistory.stack) ? flowHistory.stack.length : 0;
+  const redo = (typeof flowHistory !== 'undefined' && flowHistory && flowHistory.redoStack) ? flowHistory.redoStack.length : 0;
+  const el = document.getElementById('stHistoryCount');
+  if (el) el.textContent = total + (redo ? ` (+${redo} 可重做)` : '');
+}
+
+function showHint() { document.getElementById('canvasHint').style.display = 'block'; }
+function hideHint() { document.getElementById('canvasHint').style.display = 'none'; }
+
+// ===== Global Events =====
+document.addEventListener('click', (e) => {
+  // 防竞态：若点击目标已在事件处理中被重新渲染移除（如"添加失效模式"按钮），
+  // 不再触发取消选择，避免选中状态被意外清空导致新卡片"无法显示"
+  if (!e.target.isConnected) { hideCtxMenu(); return; }
+  if (!e.target.closest('.flow-node') && !e.target.closest('.ctx-menu') &&
+      !e.target.closest('.right-panel') && !e.target.closest('.multi-add') &&
+      !e.target.closest('.multi-del') && !e.target.closest('.edge-path') &&
+      !e.target.closest('.edge-label-group') && !e.target.closest('.canvas-toolbar') &&
+      !e.target.closest('.alert-badge') && !e.target.closest('.topbar-btn') &&
+      !e.target.closest('.left-panel') &&
+      !e.target.closest('#fmeaModal') && !e.target.closest('#scoreGuideModal')) {
+    deselectAll();
+  }
+  hideCtxMenu();
+});
+document.addEventListener('contextmenu', (e) => { if (!e.target.closest('.flow-node')) hideCtxMenu(); });
+
+// ===== Demo Data: 无刷电机生产工艺流程 =====
+function loadDemo() {
+  _suppressHistory = true; // 初始加载演示数据不计入用户历史
+  const demoNodes = [
+    { type: 'start', x: 60, y: 40, stepNo: 'Op 0', name: '原材料来料', material: '硅钢片/漆包线/磁钢/轴承' },
+    { type: 'inspection', x: 60, y: 160, stepNo: 'Op 10', name: '来料检验', productChar: ['磁钢Br≥1.2T', '线径Φ0.5±0.01'], pfmeaLinked: true },
+    { type: 'storage', x: 60, y: 280, stepNo: 'Op 15', name: '原材料入库', equipment: 'W-01' },
+    { type: 'operation', x: 60, y: 400, stepNo: 'Op 20', name: '定子冲片叠压', equipment: '叠压机DP-01', processParam: ['压力8t', '保压时间5s'], productChar: ['叠厚48±0.1mm'], specialChar: true, balloonNo: '1', pfmeaLinked: true, variation: '硅钢片厚度不均' },
+    { type: 'operation', x: 60, y: 520, stepNo: 'Op 30', name: '定子绕线', equipment: '绕线机WX-02', processParam: ['张力2.5N', '匝数120', '转速800rpm'], productChar: ['匝数120±1', '电阻2.5±0.1Ω'], specialChar: true, balloonNo: '2', pfmeaLinked: true, variation: '张力波动/匝数偏差' },
+    { type: 'inspection', x: 60, y: 640, stepNo: 'Op 40', name: '绕线质量检验', productChar: ['绝缘电阻≥100MΩ', '匝数120±1'], pfmeaLinked: true },
+    { type: 'operation', x: 60, y: 760, stepNo: 'Op 50', name: '定子浸漆绝缘', equipment: '浸漆机VPI-01', processParam: ['真空度-0.09MPa', '温度60℃'], productChar: ['绝缘等级F'], pfmeaLinked: true },
+    { type: 'operation', x: 60, y: 880, stepNo: 'Op 60', name: '烘烤固化', equipment: '烘箱OV-01', processParam: ['150℃×2h', '升温速率3℃/min'], productChar: ['漆膜固化完整'], pfmeaLinked: true },
+    { type: 'operation', x: 60, y: 1000, stepNo: 'Op 70', name: '转子磁钢装配', equipment: '装配台AS-01', processParam: ['胶水用量0.3g', '固化温度80℃'], productChar: ['充磁方向N极朝上'], specialChar: true, balloonNo: '3', pfmeaLinked: true, variation: '磁钢方向装反' },
+    { type: 'operation', x: 60, y: 1120, stepNo: 'Op 80', name: '轴承压装', equipment: '压装机PR-01', processParam: ['压入力500N', '压入速度2mm/s'], productChar: ['轴承6201', '径向游隙C3'], pfmeaLinked: true },
+    { type: 'operation', x: 60, y: 1240, stepNo: 'Op 90', name: '定转子合装', equipment: '装配台AS-02', processParam: ['气隙0.3mm'], productChar: ['气隙0.3±0.02mm'], specialChar: true, balloonNo: '4', pfmeaLinked: true, variation: '气隙不均/偏心' },
+    { type: 'operation', x: 60, y: 1360, stepNo: 'Op 100', name: '动平衡校正', equipment: '动平衡机DB-01', processParam: ['转速1500rpm', '校正半径15mm'], productChar: ['不平衡量≤0.5g·cm'], specialChar: true, balloonNo: '5', pfmeaLinked: true, variation: '转子质量分布不均' },
+    { type: 'inspection', x: 60, y: 1480, stepNo: 'Op 110', name: '电气性能测试', equipment: '测试仪ET-01', productChar: ['反电势12V/krpm', '相电阻2.5Ω', '相电感0.8mH'], pfmeaLinked: true },
+    { type: 'inspection', x: 60, y: 1600, stepNo: 'Op 120', name: '空载性能测试', equipment: '测功机DY-01', productChar: ['空载转速3600rpm', '电流≤0.8A'], pfmeaLinked: true },
+    { type: 'operation', x: 60, y: 1720, stepNo: 'Op 130', name: '外壳封装', equipment: '封装机EN-01', processParam: ['IP54密封'] },
+    { type: 'inspection', x: 60, y: 1840, stepNo: 'Op 140', name: '成品外观终检', pfmeaLinked: true },
+    { type: 'storage', x: 60, y: 1960, stepNo: 'Op 150', name: '成品入库', equipment: 'W-02' },
+    { type: 'end', x: 60, y: 2080, stepNo: 'Op End', name: '成品出货', material: '成品36V无刷电机×1' },
+  ];
+  demoNodes.forEach(d => {
+    const opts = { ...d };
+    delete opts.type; delete opts.x; delete opts.y;
+    createNode(d.type, d.x, d.y, opts);
+  });
+  const seq = demoNodes.map((_, i) => 'n' + (i + 1));
+  for (let i = 0; i < seq.length - 1; i++) edges.push({ from: seq[i], to: seq[i + 1], dashed: false, label: '' });
+  redrawEdges();
+  updateStatus();
+  _suppressHistory = false;
+}
+
+// ===== Lock Mode =====
+function toggleLock() {
+  const mode = currentWorkflowMode;
+  const wasLocked = !!modeLockState[mode];
+  // 解除锁定时提示用户（警告后道工序匹配紊乱）
+  if (wasLocked) {
+    // 后道工序是否已锁定？如果已锁定则禁止解锁，需先解锁后道
+    const idx = MODE_ORDER.indexOf(mode);
+    let downstreamLocked = [];
+    for (let i = idx + 1; i < MODE_ORDER.length; i++) {
+      if (modeLockState[MODE_ORDER[i]]) downstreamLocked.push(MODE_LABELS[MODE_ORDER[i]]);
+    }
+    if (downstreamLocked.length > 0) {
+      alert('⚠ 无法解除 ' + MODE_LABELS[mode] + ' 的锁定。\n\n请先解锁后道已锁定工序：' + downstreamLocked.join(' → '));
+      return;
+    }
+    const ok = confirm('⚠ 警告：解除 ' + MODE_LABELS[mode] + ' 锁定后修改内容，可能导致后道工序（PFMEA/CP/WI）的匹配关系紊乱。\n\n确定要解除锁定吗？');
+    if (!ok) return;
+  }
+  modeLockState[mode] = !modeLockState[mode];
+  // 兼容：isLocked 反映 process 模式的锁定状态
+  isLocked = !!modeLockState.process;
+  document.body.classList.toggle('locked', isLocked);
+  // 锁定时关闭 contenteditable（仅 process 模式下有可编辑节点）
+  if (mode === 'process') {
+    document.querySelectorAll('.node-id, .node-name').forEach(el => {
+      if (isLocked) { el.removeAttribute('contenteditable'); el.style.cursor = 'default'; }
+      else { el.setAttribute('contenteditable', 'true'); }
+    });
+  }
+  // 更新工作流悬浮窗的锁定状态
+  updateWorkflowFloat();
+  // process 锁定时加载 PFMEA 数据，解锁时清空
+  if (mode === 'process') {
+    if (isLocked) { loadPfmeaData(); } else { pfmeaData = {}; }
+  }
+  // 刷新右侧面板
+  renderProps();
+  // 同步锁定状态到 localStorage（供 PFMEA 页面检查）
+  try {
+    const partNo = document.getElementById('partSelect').value;
+    const raw = localStorage.getItem('processFlow_' + partNo);
+    if (raw) { const d = JSON.parse(raw); d.isLocked = isLocked; d.modeLockState = { ...modeLockState }; localStorage.setItem('processFlow_' + partNo, JSON.stringify(d)); }
+    else { saveFlow(); }
+  } catch (e) {}
+}
+
+// 更新工作流悬浮窗：当前模式高亮 + 锁定状态
+let currentWorkflowMode = 'process';  // process / pfmea / cp / wi
+// 每个模式的独立锁定状态：前置流程必须锁定才能进入后流程
+const modeLockState = { process: false, pfmea: false, cp: false, wi: false };
+// 兼容旧代码：isLocked 现在等同于 process 模式的锁定状态
+let isLocked = false;
+// 顺序依赖：进入后流程需要前流程锁定
+const MODE_ORDER = ['process', 'pfmea', 'cp', 'wi'];
+const MODE_LABELS = { process: 'Process Flow', pfmea: 'PFMEA', cp: 'CP', wi: 'WI' };
+
+function updateWorkflowFloat() {
+  const isPfmea = currentWorkflowMode === 'pfmea';
+  const steps = [
+    { id: 'wfProcessFlow', mode: 'process' },
+    { id: 'wfPfmea', mode: 'pfmea' },
+    { id: 'wfCP', mode: 'cp' },
+    { id: 'wfWI', mode: 'wi' },
+  ];
+  steps.forEach(s => {
+    const el = document.getElementById(s.id);
+    if (!el) return;
+    el.classList.toggle('active', s.mode === currentWorkflowMode);
+    el.classList.toggle('locked', !!modeLockState[s.mode]);
+    // 判断是否被禁用（前置流程未全部锁定）
+    el.classList.toggle('disabled', !canEnterMode(s.mode));
+  });
+  // Process Flow 图标随锁定状态切换
+  const pfIcon = document.getElementById('wfPfIcon');
+  if (pfIcon) pfIcon.textContent = modeLockState.process ? 'lock' : 'play_circle';
+  // FMEA 模式：画布卡片显示 PFMEA 入口箭头，左侧面板切换为失效模式库
+  document.body.classList.toggle('pfmea-mode', isPfmea);
+  if (!isPfmea) {
+    hidePfmeaHint();
+    document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('pfmea-active'));
+  }
+  updateLeftPanel();
+}
+
+// 判断目标模式是否可进入：自身或之前的所有流程必须已锁定
+function canEnterMode(mode) {
+  const idx = MODE_ORDER.indexOf(mode);
+  if (idx < 0) return true;
+  // 之前所有流程必须锁定（自身不必）
+  for (let i = 0; i < idx; i++) {
+    if (!modeLockState[MODE_ORDER[i]]) return false;
+  }
+  return true;
+}
+
+function switchWorkflowMode(mode) {
+  // 当前模式点击不切换（避免双击锁定时误切换）
+  if (mode === currentWorkflowMode) return;
+  // 前置流程未锁定，禁止进入
+  if (!canEnterMode(mode)) {
+    const idx = MODE_ORDER.indexOf(mode);
+    const missing = [];
+    for (let i = 0; i < idx; i++) {
+      if (!modeLockState[MODE_ORDER[i]]) missing.push(MODE_LABELS[MODE_ORDER[i]]);
+    }
+    alert('⚠ 无法切换到 ' + MODE_LABELS[mode] + '\n\n请先锁定前道工序：' + missing.join(' → '));
+    return;
+  }
+  currentWorkflowMode = mode;
+  updateWorkflowFloat();
+  // TODO: 未来切换到 PFMEA/CP/WI 对应页面时在此处理
+}
+
+// ===== Edge Click / Delete =====
+function selectEdge(idx) {
+  if (isLocked) return;
+  selectedEdge = idx;
+  selectedId = null;
+  selectedSet.clear();
+  document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.edge-path').forEach(el => el.classList.remove('selected'));
+  const paths = document.querySelectorAll('.edge-path');
+  if (paths[idx]) paths[idx].classList.add('selected');
+  renderProps();
+}
+
+function deselectAll() {
+  selectedId = null;
+  selectedEdge = null;
+  selectedSet.clear();
+  document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected', 'pfmea-active'));
+  document.querySelectorAll('.edge-path').forEach(el => el.classList.remove('selected'));
+  hidePfmeaHint();
+  renderProps();
+}
+
+function deleteEdge(idx) {
+  if (isLocked || idx == null) return;
+  pushHistory();
+  edges.splice(idx, 1);
+  selectedEdge = null;
+  redrawEdges();
+  validateFlow();
+  updateStatus();
+}
+
+function deleteNode(id) {
+  if (isLocked) return;
+  pushHistory();
+  // 删除节点 DOM
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  // 从 nodes 中移除
+  nodes = nodes.filter(n => n.id !== id);
+  // 清理所有关联连线
+  edges = edges.filter(e => e.from !== id && e.to !== id);
+  // 清理选择
+  if (selectedId === id) selectedId = null;
+  selectedSet.delete(id);
+  if (selectedSet.size === 0) deselectAll();
+  enforceAllEdgeGaps();
+  validateFlow();
+  updateStatus();
+  renderProps();
+}
+
+function deleteSelected() {
+  if (isLocked) return;
+  const hasEdge = selectedEdge != null;
+  const ids = Array.from(selectedSet);
+  if (ids.length === 0 && selectedId) ids.push(selectedId);
+  const hasNodes = ids.length > 0;
+  if (!hasEdge && !hasNodes) return;
+  pushHistory(); // 复合删除开始前，先 push 操作前快照（统一一步撤销）
+  _suppressHistory = true;
+  if (hasEdge) deleteEdge(selectedEdge);
+  ids.forEach(id => deleteNode(id));
+  _suppressHistory = false;
+}
+
+// ===== Marquee Selection (框选) =====
+document.addEventListener('DOMContentLoaded', () => {
+  const viewport = document.getElementById('canvasViewport');
+  const marquee = document.getElementById('marquee');
+
+  viewport.addEventListener('mousedown', (e) => {
+    if (isLocked) return;
+    if (e.button !== 0) return; // 仅左键
+    if (view.mode !== 'select') return;
+    if (e.shiftKey) return;     // Shift+拖拽 仍然平移
+    if (e.target.closest('.flow-node') || e.target.closest('.node-anchor') ||
+        e.target.closest('.canvas-toolbar') || e.target.closest('.edge-path') ||
+        e.target.closest('.edge-label-group') || e.target.closest('.marquee') ||
+        e.target.closest('.alert-badge')) return;
+
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    marqueeState = { startX, startY };
+    marquee.style.display = 'block';
+    marquee.style.left = (startX - viewport.getBoundingClientRect().left) + 'px';
+    marquee.style.top = (startY - viewport.getBoundingClientRect().top) + 'px';
+    marquee.style.width = '0px';
+    marquee.style.height = '0px';
+    if (!e.ctrlKey && !e.metaKey) deselectAll();
+    document.addEventListener('mousemove', onMarqueeMove);
+    document.addEventListener('mouseup', onMarqueeEnd);
+  });
+
+  function onMarqueeMove(e) {
+    if (!marqueeState) return;
+    const vpRect = viewport.getBoundingClientRect();
+    const x1 = Math.min(marqueeState.startX, e.clientX);
+    const y1 = Math.min(marqueeState.startY, e.clientY);
+    const x2 = Math.max(marqueeState.startX, e.clientX);
+    const y2 = Math.max(marqueeState.startY, e.clientY);
+    marquee.style.left = (x1 - vpRect.left) + 'px';
+    marquee.style.top = (y1 - vpRect.top) + 'px';
+    marquee.style.width = (x2 - x1) + 'px';
+    marquee.style.height = (y2 - y1) + 'px';
+
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+    const box = { x1, y1, x2, y2 };
+    const vpScr = viewport.getBoundingClientRect();
+
+    // 默认模式：所见即所得——先清空，再按当前命中加入
+    if (!additive) {
+      selectedSet.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('selected'); });
+      selectedSet.clear();
+    }
+
+    nodes.forEach(node => {
+      const el = document.getElementById(node.id);
+      if (!el) return;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      const sx = vpScr.left + view.panX + node.x * view.zoom;
+      const sy = vpScr.top + view.panY + node.y * view.zoom;
+      const ex = sx + w * view.zoom;
+      const ey = sy + h * view.zoom;
+      const intersect = !(ex < box.x1 || sx > box.x2 || ey < box.y1 || sy > box.y2);
+      if (intersect) {
+        selectedSet.add(node.id);
+        el.classList.add('selected');
+      } else if (additive) {
+        // 追加模式下保留原有选择，不做移除
+      } else {
+        // 默认模式下未命中则移除（上面已 clear，这里理论不需要，但做个双保险）
+        selectedSet.delete(node.id);
+        el.classList.remove('selected');
+      }
+    });
+    if (selectedSet.size > 0) {
+      selectedId = null;
+      selectedEdge = null;
+      renderProps();
+    }
+  }
+
+  function onMarqueeEnd() {
+    if (!marqueeState) return;
+    marqueeState = null;
+    marquee.style.display = 'none';
+    document.removeEventListener('mousemove', onMarqueeMove);
+    document.removeEventListener('mouseup', onMarqueeEnd);
+    updateStatus();
+  }
+});
+
+// ===== Keyboard: Delete/Backspace/Single Select Ctrl/Shift + Undo/Redo =====
+document.addEventListener('keydown', (e) => {
+  // Esc：优先关闭打分标准弹窗，其次关闭 FMEA 思维导图弹窗
+  if (e.key === 'Escape') {
+    const sg = document.getElementById('scoreGuideModal');
+    if (sg && sg.style.display !== 'none') { closeScoreGuide(); return; }
+    if (mmOpen) { e.preventDefault(); closeFmeaMindMap(false); return; }
+  }
+  const tag = (e.target.tagName || '').toLowerCase();
+  // 撤销/重做：即使在 input/textarea 中也允许（更符合用户直觉）
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && !e.altKey) {
+    if (e.key === 'z' || e.key === 'Z') {
+      e.preventDefault();
+      if (e.shiftKey) redo(); else undo();
+      return;
+    }
+    if (e.key === 'y' || e.key === 'Y') {
+      e.preventDefault();
+      redo();
+      return;
+    }
+  }
+  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    deleteSelected();
+  } else if (e.key === 'Escape') {
+    deselectAll();
+    cancelConnect();
+  }
+});
+
+// ===== Flow Validation =====
+function validateFlow() {
+  const badge = document.getElementById('alertBadge');
+  const title = document.getElementById('alertTitle');
+  const detail = document.getElementById('alertDetail');
+  const icon = document.getElementById('alertIcon');
+  const problems = [];
+
+  if (nodes.length === 0) {
+    badge.style.display = 'none';
+    return;
+  }
+
+  // 找起点 / 结束节点类型
+  const startNodes = nodes.filter(n => n.type === 'start').map(n => n.id);
+  const endNodes = nodes.filter(n => n.type === 'end').map(n => n.id);
+
+  // 构建出边映射
+  const adj = new Map();
+  const inAdj = new Map();
+  nodes.forEach(n => { adj.set(n.id, []); inAdj.set(n.id, []); });
+  edges.forEach(e => {
+    if (adj.has(e.from)) adj.get(e.from).push(e.to);
+    if (inAdj.has(e.to)) inAdj.get(e.to).push(e.from);
+  });
+
+  // 1. 无 start 节点
+  if (startNodes.length === 0) problems.push({ lv: 'err', text: '流程缺少起点节点 (Start S)' });
+  // 2. 无 end 节点
+  if (endNodes.length === 0) problems.push({ lv: 'err', text: '流程缺少结束节点 (End E)，工艺流程定义不完整' });
+
+  // 3. 叶子节点（无出边）非 end 类型 -> 不完整
+  const leaves = nodes.filter(n => (adj.get(n.id) || []).length === 0);
+  leaves.forEach(n => {
+    if (n.type !== 'end') {
+      problems.push({ lv: 'err', text: `工序 [${n.stepNo} ${n.name}] 未连接到结束节点，分支定义不完整` });
+    }
+  });
+
+  // 4. 死循环检测 (DFS color)
+  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const color = {};
+  nodes.forEach(n => color[n.id] = WHITE);
+  const cycles = [];
+  const stack = [];
+  function dfs(u) {
+    color[u] = GRAY;
+    stack.push(u);
+    for (const v of adj.get(u) || []) {
+      if (color[v] === GRAY) {
+        // 找到一个环：stack 从 v 第一次出现的位置截断
+        const i = stack.indexOf(v);
+        const cyc = stack.slice(i).concat(v);
+        cycles.push(cyc);
+      } else if (color[v] === WHITE) {
+        dfs(v);
+      }
+    }
+    stack.pop();
+    color[u] = BLACK;
+  }
+  nodes.forEach(n => { if (color[n.id] === WHITE) dfs(n.id); });
+  if (cycles.length > 0) {
+    cycles.slice(0, 3).forEach(cyc => {
+      const stepIds = cyc.map(id => { const n = nodes.find(nd => nd.id === id); return n ? n.stepNo : id; }).join(' → ');
+      problems.push({ lv: 'err', text: `存在循环回路：${stepIds}` });
+    });
+    if (cycles.length > 3) problems.push({ lv: 'err', text: `另有 ${cycles.length - 3} 个回路，请逐一排查` });
+  }
+
+  // 5. 节点有出边但指向 start 类型（异常）
+  edges.forEach(e => {
+    const toN = nodes.find(n => n.id === e.to);
+    if (toN && toN.type === 'start') {
+      problems.push({ lv: 'warn', text: `边 [${(nodes.find(n => n.id === e.from) || {}).stepNo || ''} → ${toN.stepNo}] 指向了起点节点` });
+    }
+  });
+  // 6. end 节点有出边（异常）
+  endNodes.forEach(id => {
+    if ((adj.get(id) || []).length > 0) {
+      const n = nodes.find(nd => nd.id === id);
+      problems.push({ lv: 'warn', text: `结束节点 [${n ? n.stepNo : ''}] 存在出边，可能逻辑错误` });
+    }
+  });
+
+  // 展示
+  if (problems.length === 0) {
+    badge.style.display = 'none';
+    return;
+  }
+  const errCount = problems.filter(p => p.lv === 'err').length;
+  const warnCount = problems.length - errCount;
+  if (errCount > 0) {
+    badge.classList.remove('warn');
+    icon.textContent = 'error';
+    title.textContent = `流程完整性告警 (${errCount}${warnCount ? ' 错误, ' + warnCount + ' 警告' : ' 错误'})`;
+  } else {
+    badge.classList.add('warn');
+    icon.textContent = 'warning';
+    title.textContent = `流程警告 (${warnCount} 警告)`;
+  }
+  detail.innerHTML = problems.map(p =>
+    p.lv === 'err'
+      ? `• <b style="color:#b91c1c">错误：</b>${p.text}`
+      : `• <b style="color:#b45309">警告：</b>${p.text}`
+  ).join('<br>');
+  badge.style.display = 'flex';
+}
+
+function clickAlertBadge() {
+  // 点击展开/折叠详情
+  const d = document.getElementById('alertDetail');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+
+// 覆盖旧的 selectNode 与 updateStatus（之后在 updateStatus 里调用 validate）
+(function hookStatus() {
+  const _origUpdate = updateStatus;
+  updateStatus = function() {
+    _origUpdate();
+    validateFlow();
+  };
+})();
+
+// ===== 主题跟随：嵌入到项目时同步父页面(Project 模块)的设计变量 =====
+// 将父页面 html[data-theme] 下的 --color-* 变量映射到本应用自身的 :root 变量，
+// 使 process develop 页面的风格主题随项目（含明暗切换）变化；独立打开时保留默认主题。
+function hexToRgba(hex, a) {
+  if (!hex || hex[0] !== '#') return null;
+  let h = hex.slice(1);
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  if (h.length !== 6) return null;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+function syncParentTheme() {
+  try {
+    const w = window.parent;
+    if (!w || w === window) return; // 独立打开：使用自身默认主题
+    const pRoot = w.document.documentElement;
+    const cs = w.getComputedStyle(pRoot);
+    const get = (name) => cs.getPropertyValue(name).trim();
+    const set = (name, val) => {
+      if (val) document.documentElement.style.setProperty(name, val);
+    };
+
+    // 核心 token
+    set('--brand', get('--color-brand'));
+    set('--brand-hover', get('--color-brand-hover'));
+    set('--primary', get('--color-primary'));
+    set('--on-primary', get('--color-on-primary'));
+    set('--bg', get('--color-background'));
+    set('--surface', get('--color-surface'));
+    set('--surface-bright', get('--color-surface-bright'));
+    set('--surface-container', get('--color-surface-container'));
+    set('--surface-container-low', get('--color-surface-container-low'));
+    set('--surface-container-high', get('--color-surface-container-high'));
+    set('--surface-container-highest', get('--color-surface-container-highest'));
+    set('--surface-container-lowest', get('--color-surface-container-lowest'));
+    set('--border', get('--color-border'));
+    set('--border-separator', get('--color-border-separator'));
+    set('--text-primary', get('--color-text-primary'));
+    set('--text-secondary', get('--color-text-secondary'));
+    set('--text-tertiary', get('--color-text-tertiary'));
+    set('--outline', get('--color-outline'));
+    set('--secondary', get('--color-secondary'));
+    set('--error', get('--color-error'));
+    set('--success', get('--color-success'));
+    set('--warning', get('--color-warning'));
+
+    // 语义色：由品牌色派生半透明 tint
+    const brand = get('--color-brand');
+    if (brand) {
+      set('--brand-light', get('--color-primary-fixed') || hexToRgba(brand, 0.22));
+      set('--brand-dim', hexToRgba(brand, 0.08));
+    }
+
+    // 节点类型色：映射到项目语义色（无对应时用半透明派生）
+    set('--op-color', get('--color-secondary'));
+    set('--op-bg', get('--color-info-container') || hexToRgba(get('--color-secondary'), 0.14));
+    set('--insp-color', get('--color-success'));
+    set('--insp-bg', get('--color-success-container') || hexToRgba(get('--color-success'), 0.14));
+    set('--trans-color', get('--color-outline'));
+    set('--trans-bg', get('--color-surface-container'));
+    set('--delay-color', get('--color-warning'));
+    set('--delay-bg', get('--color-warning-container') || hexToRgba(get('--color-warning'), 0.14));
+    set('--store-color', get('--color-tertiary'));
+    set('--store-bg', hexToRgba(get('--color-tertiary'), 0.14));
+    set('--start-color', get('--color-text-secondary'));
+    set('--start-bg', get('--color-surface-container'));
+    set('--end-color', get('--color-secondary'));
+    set('--end-bg', hexToRgba(get('--color-secondary'), 0.12));
+    set('--dec-color', get('--color-error'));
+    set('--dec-bg', get('--color-error-container') || hexToRgba(get('--color-error'), 0.12));
+    set('--sc-color', get('--color-error'));
+  } catch (err) {
+    // 跨域或其它异常：保持默认主题
+  }
+}
+(function initThemeSync() {
+  try {
+    const w = window.parent;
+    if (!w || w === window) return;
+    syncParentTheme();
+    // 父页面切换 light/white/dark 主题时实时同步
+    const obs = new MutationObserver(syncParentTheme);
+    obs.observe(w.document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'class'],
+      subtree: true,
+    });
+  } catch (err) { /* 忽略 */ }
+})();
+
+// Init
+loadDemo();
+// 初始校正连线间距
+enforceAllEdgeGaps();
+// hookStatus 之后显式调用一次，触发流程完整性校验
+updateStatus();
+updateHistoryUI();
+// 初始化工作流悬浮窗状态
+updateWorkflowFloat();
+// 初始化左侧面板（按工作模式渲染）
+updateLeftPanel();
+// 图标字体兜底：Material Symbols 不可用时转为内联 SVG
+initIcons();
+// 支持 ?mode=pfmea：嵌入到项目模块时直接进入 PFMEA 工作模式（自动锁定 Process Flow）
+(function initModeParam() {
+  const mode = new URLSearchParams(location.search).get('mode');
+  if (mode === 'pfmea') {
+    modeLockState.process = true;
+    isLocked = true;
+    document.body.classList.add('locked');
+    loadPfmeaData();
+    currentWorkflowMode = 'pfmea';
+    updateWorkflowFloat();
+    renderProps();
+  }
+})();
+// 初始化右侧面板宽度拖拽调整
+(function initResizer() {
+  const resizer = document.getElementById('panelResizer');
+  const rightPanel = document.getElementById('rightPanel');
+  if (!resizer || !rightPanel) return;
+  const MIN_W = 240;
+  const MAX_W = 1200;
+  let resizing = false;
+  let startX = 0;
+  let startW = 0;
+  resizer.addEventListener('mousedown', (e) => {
+    resizing = true;
+    startX = e.clientX;
+    startW = rightPanel.offsetWidth;
+    resizer.classList.add('resizing');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!resizing) return;
+    const dx = startX - e.clientX;
+    const newW = Math.max(MIN_W, Math.min(MAX_W, startW + dx));
+    rightPanel.style.width = newW + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!resizing) return;
+    resizing = false;
+    resizer.classList.remove('resizing');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
+// 初始化后适应窗口
+setTimeout(() => fitToWindow(), 50);
+</script>
+</body>
+</html>
